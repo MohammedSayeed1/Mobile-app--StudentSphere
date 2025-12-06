@@ -12,7 +12,7 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.sayeed.studentsphere", 
+      "package": "com.sayeed.studentsphere",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/logo.png",
@@ -29,7 +29,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/logofull.png",
+          "image": "./assets/images/logo.png",
           "imageWidth": 200,
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
@@ -39,6 +39,12 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "19660d6e-91bf-4f69-a39d-e133cee62161"
+      }
     }
   }
 }

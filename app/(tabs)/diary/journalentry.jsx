@@ -1,3 +1,4 @@
+// JournalEntry.js (Replace your existing file contents with this)
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -7,6 +8,9 @@ import {
   StyleSheet,
   Alert,
   TouchableOpacity,
+  Animated,
+  ActivityIndicator,
+  ScrollView
 } from 'react-native';
 import { images } from 'constants';
 import CustomButton from '../../../components/CustomButton';
@@ -17,6 +21,7 @@ import { useFonts } from "expo-font";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import LottieView from 'lottie-react-native';
 
+// Helper functions (same as your originals)
 const affirmations = [
   "I am enough just as I am.",
   "I choose peace over worry.",
@@ -49,16 +54,258 @@ const readUsername = async () => {
   }
 };
 
-export default function JournalEntry() {
+// -----------------------------
+// VALIDATION MODAL COMPONENT
+// -----------------------------
+function ValidationModal({ isVisible, closeModal, journalEntry }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [questionText, setQuestionText] = useState("");
+  const [questionType, setQuestionType] = useState(""); // "yes_no" | "choice" | "reflection"
+  const [options, setOptions] = useState([]);
+  const [textAnswer, setTextAnswer] = useState("");
+  const [finalResult, setFinalResult] = useState(null);
+  const [showFinalCard, setShowFinalCard] = useState(false);
 
+  const [username, setUsername] = useState('');
+  const date = new Date().toISOString().split("T")[0];
+
+  useEffect(() => {
+    const fetchUsername = async () => {
+      const u = await readUsername();
+      if (u) setUsername(u);
+    };
+    fetchUsername();
+  }, []);
+
+  // start validation only when we have both journalEntry and username
+  useEffect(() => {
+    if (isVisible && username) {
+        startValidation();
+    }
+}, [isVisible, username]);
+
+
+  const startValidation = async () => {
+    try {
+      setBusy(true);
+      const resp = await fetch("http://192.168.29.215:5010/save-journal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, entry: journalEntry, date }),
+      });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        Alert.alert("Error", data?.error || "Could not start validation.");
+        closeModal();
+        return;
+      }
+
+      setQuestionText(data.question || "");
+      setQuestionType(data.question_type || "reflection");
+      setOptions(data.options || []);
+      setCurrentStep(1);
+      setTextAnswer("");
+      setFinalResult(null);
+      setShowFinalCard(false);
+    } catch (err) {
+      console.log("Error starting validation:", err);
+      Alert.alert("Error", "Could not start validation.");
+      closeModal();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submitAnswer = async (answer) => {
+    // validate presence of answer (for reflection ensure user typed something)
+    if (!answer || (typeof answer === "string" && !answer.trim())) {
+      Alert.alert("Empty answer", "Please enter a response before submitting.");
+      return;
+    }
+
+    // ensure username exists
+    let u = username;
+    if (!u) {
+      u = await readUsername();
+      if (!u) {
+        Alert.alert("Error", "No username found. Please login again.");
+        return;
+      }
+      setUsername(u);
+    }
+
+    try {
+      setBusy(true);
+      const resp = await fetch("http://192.168.29.215:5010/answer-question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: u, date, answer }),
+      });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        // show server-provided error message if any
+        Alert.alert("Error", data?.error || "Could not submit answer.");
+        setBusy(false);
+        return;
+      }
+
+      if (data.complete) {
+        await fetchFinalAdvice();
+        return;
+      }
+
+      setQuestionText(data.question || "");
+      setQuestionType(data.question_type || "reflection");
+      setOptions(data.options || []);
+      setCurrentStep((prev) => Math.min(3, prev + 1));
+      setTextAnswer("");
+    } catch (err) {
+      console.log("Error submitting answer:", err);
+      Alert.alert("Error", "Could not submit answer.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const fetchFinalAdvice = async () => {
+    try {
+      setBusy(true);
+      const resp = await fetch("http://192.168.29.215:5010/complete", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, date }),
+      });
+      const data = await resp.json();
+
+      if (!resp.ok) {
+        Alert.alert("Error", data?.error || "Could not fetch final advice.");
+        return;
+      }
+
+      setFinalResult({ advice: data.advice, affirmation: data.affirmation });
+      setShowFinalCard(true);
+    } catch (err) {
+      console.log("Error fetching final advice:", err);
+      Alert.alert("Error", "Could not fetch final advice.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const renderQuestionBody = () => {
+    if (questionType === "yes_no") {
+      return (
+        <View style={{ marginTop: 10 }}>
+          <TouchableOpacity style={styles.optionBtn} onPress={() => submitAnswer("Yes")} disabled={busy}>
+            <Text style={styles.optionText}>Yes</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.optionBtn} onPress={() => submitAnswer("No")} disabled={busy}>
+            <Text style={styles.optionText}>No</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (questionType === "choice") {
+      return (
+        <View style={{ marginTop: 10 }}>
+          {options.map((opt, i) => (
+            <TouchableOpacity key={i} style={styles.optionBtn} onPress={() => submitAnswer(opt)} disabled={busy}>
+              <Text style={styles.optionText}>{opt}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      );
+    }
+
+    if (questionType === "reflection") {
+      return (
+        <View style={{ marginTop: 10 }}>
+          <TextInput
+            style={styles.textField}
+            placeholder="Type your response..."
+            value={textAnswer}
+            onChangeText={setTextAnswer}
+            editable={!busy}
+            multiline
+          />
+          <TouchableOpacity style={styles.submitBtn} onPress={() => submitAnswer(textAnswer)} disabled={busy}>
+            <Text style={styles.submitText}>{busy ? "Thinking..." : "Submit"}</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return null;
+  };
+
+  return (
+    <Modal
+      isVisible={isVisible}
+      onBackdropPress={() => { if (!busy) closeModal(); }}
+      animationIn="zoomIn"
+      animationOut="zoomOut"
+      backdropOpacity={0.4}
+    >
+      <ScrollView contentContainerStyle={styles.modalContainer}>
+        {!showFinalCard ? (
+          <>
+            <Text style={styles.modalTitle}>A quick check-in</Text>
+            <Text style={styles.modalHeading}>Question {currentStep} of 3</Text>
+            <Text style={styles.modalText}>{questionText}</Text>
+
+            {busy ? (
+              <View style={{ marginVertical: 12, alignItems: "center" }}>
+                <ActivityIndicator size="large" color="#3c3d37" />
+                <Text style={{ marginTop: 8, fontFamily: "Gilroy-Regular" }}>Thinking...</Text>
+              </View>
+            ) : (
+              renderQuestionBody()
+            )}
+          </>
+        ) : (
+          <>
+            <Text style={styles.modalTitle}>🌿 A small support for you</Text>
+
+            <Text style={styles.modalHeading}>💬 Comfort Notes</Text>
+            <Text style={styles.modalText}>{finalResult?.advice}</Text>
+
+            <Text style={styles.modalHeading}>✨ Growth & Resilience</Text>
+            <Text style={styles.modalText}>"{finalResult?.affirmation}"</Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalButton} onPress={closeModal}>
+                <Text style={styles.modalButtonText}>Continue Writing</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={[styles.modalButton, { backgroundColor: "#3c3d37" }]} onPress={() => { closeModal(); router.push("/diary"); }}>
+                <Text style={styles.modalButtonText}>Go to Diary</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </Modal>
+  );
+}
+
+// -----------------------------
+// MAIN JOURNAL ENTRY COMPONENT
+// -----------------------------
+export default function JournalEntry() {
   const [entry, setEntry] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [affirmation] = useState(affirmations[Math.floor(Math.random() * affirmations.length)]);
   const [username, setUsername] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
-  const [modalData, setModalData] = useState({ sentiment: '', ai_affirmation: '', ai_advice: '' });
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
+
+  const [showPrivacyCard, setShowPrivacyCard] = useState(true);
+  const slideAnim = useState(new Animated.Value(-100))[0];
 
   const [fontsLoaded] = useFonts({
     "Gilroy-Regular": require("../../../assets/fonts/Gilroy-Regular.ttf"),
@@ -66,23 +313,38 @@ export default function JournalEntry() {
     "Gilroy-RegularItalic": require("../../../assets/fonts/Gilroy-RegularItalic.ttf"),
   });
 
+  const router = useRouter();
   if (!fontsLoaded) return null;
+
+  useEffect(() => {
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+
+    const timer = setTimeout(() => {
+      Animated.timing(slideAnim, {
+        toValue: -150,
+        duration: 500,
+        useNativeDriver: true,
+      }).start(() => setShowPrivacyCard(false));
+    }, 4000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     const init = async () => {
       const cleanUsername = await readUsername();
       if (!cleanUsername) return;
-
       setUsername(cleanUsername);
 
       const date = new Date().toISOString().split('T')[0];
       try {
-        const resp = await fetch(
-          `http://192.168.29.215:5010/get-journal?username=${cleanUsername}&date=${date}`
-        );
-        
+        const resp = await fetch(`http://192.168.29.215:5010/get-journal?username=${encodeURIComponent(cleanUsername)}&date=${date}`);
         const data = await resp.json();
-        if (resp.ok) setEntry(data.text || "");
+        if (resp.ok && data) setEntry(data.text || "");
       } catch (error) {
         console.error("Fetch journal error:", error);
       }
@@ -90,51 +352,22 @@ export default function JournalEntry() {
     init();
   }, []);
 
-  if (!fontsLoaded) return null;
-
-  // --------------------------------------------------
-  // ORIGINAL SAVE JOURNAL — no toast logic
-  // --------------------------------------------------
-  const saveJournal = async (navigateAfter = null) => {
-    try {
-      const cleanUsername = await readUsername();
-      if (!cleanUsername) {
-        Alert.alert("Error", "Username missing. Please log in again.");
-        return;
-      }
-  
-      setLoading(true);
-  
-      const response = await fetch("http://192.168.29.215:5010/save-journal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: cleanUsername, entry }),
-      });
-  
-      const data = await response.json();
-  
-      if (response.ok) {
-        setModalData({
-          sentiment: data.sentiment,
-          ai_affirmation: data.ai_affirmation,
-          ai_advice: data.ai_advice,
-        });
-  
-        setTimeout(() => setLoading(false), 300);
-        setModalVisible(true);
-  
-      } else {
-        setLoading(false);
-        Alert.alert("Error", data.message || "Could not save journal.");
-      }
-  
-    } catch (error) {
-      setLoading(false);
-      Alert.alert("Error", "Network/server issue");
-      console.log(error);
+  const saveJournal = async () => {
+    if (!entry || !entry.trim()) {
+      Alert.alert("Empty journal", "Please write something before saving.");
+      return;
     }
+
+    // Ensure username present before opening modal
+    const u = username || await readUsername();
+    if (!u) {
+      Alert.alert("Missing username", "Please login again.");
+      return;
+    }
+    setUsername(u);
+
+    setModalVisible(true);
   };
-  
 
   return (
     <KeyboardAwareScrollView
@@ -146,19 +379,24 @@ export default function JournalEntry() {
       backgroundColor="#fafaf5"
     >
       <View style={styles.container}>
+        {showPrivacyCard && (
+          <Animated.View style={[styles.privacyCard, { transform: [{ translateY: slideAnim }] }]}>
+            <Text style={styles.privacyTitle}>🔒 Your Privacy Matters</Text>
+            <Text style={styles.privacyText}>
+              Your journal is encrypted and completely private, only you can read it. ❤️
+            </Text>
+          </Animated.View>
+        )}
 
-        {/* HEADER */}
         <View style={styles.headerRow}>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Text style={styles.backText}>← Back</Text>
           </TouchableOpacity>
           <Text style={styles.date}>
-            {currentTime.toLocaleDateString()}{" "}
-            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {currentTime.toLocaleDateString()} {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
           </Text>
         </View>
 
-        {/* AFFIRMATION */}
         <Text style={styles.affirmation}>{affirmation}</Text>
 
         <View style={styles.adviceBox}>
@@ -167,12 +405,7 @@ export default function JournalEntry() {
           </Text>
         </View>
 
-        {/* DIARY PAGE */}
-        <ImageBackground
-          source={images.diaryPage}
-          style={styles.diaryPage}
-          imageStyle={styles.imageStyle}
-        >
+        <ImageBackground source={images.diaryPage} style={styles.diaryPage} imageStyle={styles.imageStyle}>
           <TextInput
             multiline
             value={entry}
@@ -184,183 +417,51 @@ export default function JournalEntry() {
           />
         </ImageBackground>
 
-        <CustomButton
-          title="Save Journal"
-          containerStyles="mt-7"
-          handlePress={() => saveJournal()}
-        />
+        <CustomButton title="Save Journal" containerStyles="mt-7" handlePress={saveJournal} />
 
-        {/* LOADING */}
         {loading && (
           <View style={styles.loadingOverlay}>
-            <LottieView
-              source={require('../../../assets/Animations/Sandy Loading.json')}
-              autoPlay
-              loop
-              style={{ width: 200, height: 200 }}
-            />
+            <LottieView source={require('../../../assets/Animations/Sandy Loading.json')} autoPlay loop style={{ width: 200, height: 200 }} />
           </View>
         )}
 
-        {/* MODAL */}
-        <Modal
-          isVisible={modalVisible}
-          onBackdropPress={() => setModalVisible(false)}
-          animationIn="zoomIn"
-          animationOut="zoomOut"
-          backdropOpacity={0.4}
-        >
-          <View style={styles.modalContainer}>
-            <Text style={styles.modalTitle}>📝 Journal Saved!</Text>
-
-            <Text style={styles.modalHeading}>🧠 Sentiment</Text>
-            <Text style={styles.modalText}>{modalData.sentiment}</Text>
-
-            <Text style={styles.modalHeading}>💬 Affirmation</Text>
-            <Text style={styles.modalText}>"{modalData.ai_affirmation}"</Text>
-
-            <Text style={styles.modalHeading}>🌿 Advice</Text>
-            <Text style={styles.modalText}>{modalData.ai_advice}</Text>
-
-            <View style={styles.modalButtons}>
-
-              {/* Continue Writing */}
-              <TouchableOpacity
-                style={styles.modalButton}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>Continue Writing</Text>
-              </TouchableOpacity>
-
-              {/* Go to Diary */}
-              <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: "#3c3d37" }]}
-                onPress={() => {
-                  setModalVisible(false);
-                  router.push('/diary');
-                }}
-              >
-                <Text style={styles.modalButtonText}>Go to Diary</Text>
-              </TouchableOpacity>
-
-            </View>
-          </View>
-        </Modal>
-
+        <ValidationModal isVisible={modalVisible} closeModal={() => setModalVisible(false)} journalEntry={entry} />
       </View>
     </KeyboardAwareScrollView>
   );
 }
 
+// -----------------------------
+// STYLES (same as your previous styles)
+// -----------------------------
 const styles = StyleSheet.create({
   container: { padding: 20, flex: 1 },
-
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 10,
-  },
+  privacyCard: { position: "absolute", top: 0, left: 0, right: 0, marginHorizontal: 20, backgroundColor: "white", padding: 16, borderRadius: 16, elevation: 5, shadowColor: "#000", shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, zIndex: 999, marginTop:10 },
+  privacyTitle: { fontSize: 17, fontFamily: "Gilroy-Bold", color: "#1a1a1a", textAlign: "center", marginBottom: 4 },
+  privacyText: { fontSize: 14, fontFamily: "Gilroy-Regular", color: "#4d4d4d", textAlign: "justify", lineHeight: 20 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: 10 },
   backBtn: { paddingVertical: 10, paddingHorizontal: 1 },
   backText: { fontSize: 18, fontFamily: "Gilroy-Bold" },
   date: { fontSize: 18, fontFamily: "Gilroy-Regular" },
-
-  adviceBox: {
-    backgroundColor: '#E8F8F5',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: '#1ABC9C',
-    elevation: 2
-  },
-  adviceText: {
-    fontFamily: 'Gilroy-Regular',
-    fontSize: 15,
-    color: '#34495E',
-  },
-
-  affirmation: {
-    fontSize: 18,
-    fontStyle: 'italic',
-    color: '#4B4B4B',
-    textAlign: 'center',
-    marginBottom: 12,
-    fontFamily: 'Gilroy-Regular',
-  },
-
-  diaryPage: {
-    flex: 1,
-    minHeight: 300,
-    borderRadius: 16,
-    overflow: 'hidden',
-    padding: 20,
-    elevation: 4,
-    backgroundColor: '#fff',
-  },
+  adviceBox: { backgroundColor: '#E8F8F5', borderRadius: 12, padding: 14, marginBottom: 16, borderLeftWidth: 4, borderLeftColor: '#1ABC9C', elevation: 2 },
+  adviceText: { fontFamily: 'Gilroy-Regular', fontSize: 15, color: '#34495E' },
+  affirmation: { fontSize: 18, fontStyle: 'italic', color: '#4B4B4B', textAlign: 'center', marginBottom: 12, fontFamily: 'Gilroy-Regular' },
+  diaryPage: { flex: 1, minHeight: 300, borderRadius: 16, overflow: 'hidden', padding: 20, elevation: 4, backgroundColor: '#fff' },
   imageStyle: { resizeMode: 'cover', opacity: 0.9 },
+  textInput: { flex: 1, fontFamily: 'Gilroy-Regular', fontSize: 15, lineHeight: 23, color: '#333', marginTop: 6, textAlign: "justify" },
+  loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', zIndex: 1000, backgroundColor: "rgba(255, 255, 255, 0.5)" },
 
-  textInput: {
-    flex: 1,
-    fontFamily: 'Gilroy-Regular',
-    fontSize: 15,
-    lineHeight: 23,
-    color: '#333',
-    marginTop: 6,
-    textAlign: "justify"
-  },
-
-  modalContainer: {
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 20,
-    elevation: 10,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: 'Gilroy-Bold',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  modalHeading: {
-    fontSize: 16,
-    fontFamily: 'Gilroy-Bold',
-    color: '#2C3E50',
-    marginTop: 10,
-  },
-  modalText: {
-    fontSize: 15,
-    fontFamily: 'Gilroy-Regular',
-    color: '#34495E',
-    marginBottom: 8,
-    textAlign: "justify"
-  },
-
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 20,
-  },
-  modalButton: {
-    flex: 1,
-    marginHorizontal: 5,
-    paddingVertical: 10,
-    backgroundColor: '#3c3d37',
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  modalButtonText: { color: 'white', fontFamily: 'Gilroy-Bold', fontSize: 15 },
-
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-    backgroundColor: "rgba(255, 255, 255, 0.5)" // 50% opacity white
-  },
+  // MODAL STYLES
+  modalContainer: { backgroundColor: "white", padding: 22, borderRadius: 16, alignItems: "stretch", marginTop:70 },
+  modalTitle: { fontSize: 22, fontFamily: "Gilroy-Bold", marginBottom: 8, textAlign: "center" },
+  modalHeading: { fontSize: 18, fontFamily: "Gilroy-Bold", marginTop: 12 },
+  modalText: { fontSize: 16, fontFamily: "Gilroy-Regular", marginTop: 6, textAlign:"justify" },
+  optionBtn: { padding: 12, backgroundColor: "#F2F2F2", borderRadius: 12, marginVertical: 6, alignItems: "center" },
+  optionText: { fontFamily: "Gilroy-Bold", fontSize: 16, color: "#333" },
+  textField: { borderWidth: 1, borderColor: "#DDD", borderRadius: 10, padding: 10, fontSize: 15, fontFamily: "Gilroy-Regular", minHeight: 80 },
+  submitBtn: { marginTop: 12, padding: 12, backgroundColor: "#3c3d37", borderRadius: 12, alignItems: "center" },
+  submitText: { color: "white", fontFamily: "Gilroy-Bold", fontSize: 15 },
+  modalButtons: { marginTop: 16, flexDirection: "row", justifyContent: "space-between" },
+  modalButton: { flex: 1, padding: 12, backgroundColor: "#8BC34A", borderRadius: 12, alignItems: "center", marginHorizontal: 4 },
+  modalButtonText: { color: "white", fontFamily: "Gilroy-Bold", fontSize: 15}
 });

@@ -48,7 +48,7 @@ export default function MonthCardStack({ coverImage }) {
       }
 
       const resp = await fetch(
-        `http://127.0.0.1:5010/get-monthly-summary?username=${encodeURIComponent(
+        `http://192.168.29.215:5010/get-monthly-summary?username=${encodeURIComponent(
           username
         )}`
       );

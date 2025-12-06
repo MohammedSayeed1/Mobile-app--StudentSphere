@@ -1,13 +1,10 @@
 {
-    "build": {
-      "production": {
-        "android": {
-          "buildType": "app-bundle"
-        },
-        "ios": {
-          "simulator": false
-        }
+  "build": {
+    "android-apk": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
       }
     }
   }
-  
+}

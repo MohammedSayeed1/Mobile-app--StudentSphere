@@ -9,6 +9,8 @@ from datetime import datetime
 import google.generativeai as genai
 from collections import defaultdict
 from cryptography.fernet import Fernet
+import traceback
+
 
 # Load environment variables
 load_dotenv()
@@ -123,304 +125,312 @@ def signin():
 # ------------------------------------------------------
 @app.route('/save-journal', methods=['POST'])
 def save_journal():
-    try:
-        data = request.json
-        username = data.get('username')
-        entry_text = data.get('entry')
-        date = data.get('date', datetime.utcnow().strftime('%Y-%m-%d'))
+    import traceback
 
-        if not username or not entry_text:
-            return jsonify({'error': 'Missing username or entry'}), 400
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({"error": "Invalid JSON body"}), 400
+
+        username = (data.get('username') or "").strip()
+        entry_text = (data.get('entry') or "").strip()
+        date = data.get('date') or datetime.utcnow().strftime('%Y-%m-%d')
+
+        if not username:
+            return jsonify({'error': 'Missing username'}), 400
+        if not entry_text:
+            return jsonify({'error': 'Missing journal entry'}), 400
 
         journals_collection = mongo.db.journals
-        memories_collection = mongo.db.memories
-        summaries_collection = mongo.db.summaries
-
-
+        sessions_col = mongo.db.validation_sessions
         timestamp_now = datetime.utcnow()
 
-        # -----------------------------
-        # 1️⃣ SENTIMENT + AFFIRMATION + ADVICE (YOUR PROMPT)
-        # -----------------------------
-        sentiment_prompt = f"""
-You are a kind and thoughtful mental health assistant. Read the following journal entry and determine the **single most dominant emotion** the writer is expressing.
-
-The sentiment must be **only one** from this list:
-[Happy, Sad, Anxious, Stressed, Angry, Lonely, Grateful, Hopeful, Guilty, Conflicted]
-
-Then, generate:
-1. A short, supportive affirmation (1–2 lines).
-2. A brief piece of advice (1–2 lines).
-
-Journal Entry:
-\"{entry_text}\"
-
-Respond **only** in valid JSON (no markdown, no backticks):
-{{
-  "sentiment": "<one emotion>",
-  "affirmation": "<short supportive affirmation>",
-  "advice": "<short helpful advice>"
-}}
-"""
-
-        ai_response = model.generate_content(sentiment_prompt).text.strip()
-        ai_response = ai_response.replace("```json", "").replace("```", "").strip()
-
-        try:
-            sentiment_data = json.loads(ai_response)
-        except Exception as e:
-            print("🔥 SENTIMENT JSON ERROR:", e)
-          
-            return jsonify({"error": "Invalid AI JSON"}), 500
-
-        sentiment = sentiment_data.get("sentiment", "Unknown")
-        ai_affirmation = sentiment_data.get("affirmation", "")
-        ai_advice = sentiment_data.get("advice", "")
+        # Delete any old session for that date
+        sessions_col.delete_one({"username": username, "date": date})
 
         # -----------------------------
-        # 2️⃣ MEMORY EXTRACTION (YOUR PROMPT)
-        # -----------------------------
-        memory_prompt = f"""
-You are an empathetic journaling assistant. Read the following journal entry and decide if it contains a meaningful personal moment worth saving — something the user might want to remember later (gratitude, kindness, realization, joy).
-
-If NO meaningful moment exists, respond:
-{{"save_memory": false}}
-
-If YES, respond exactly like this:
-{{
-  "save_memory": true,
-  "memory": "<1–3 sentence emotional reflection written from user's perspective>"
-}}
-
-Guidelines:
-- Use “I felt…”, “I realized…”, “It reminded me…”
-- Make it warm and nostalgic.
-- Do NOT repeat the entire story.
-
-Journal Entry:
-\"{entry_text}\"
-
-Respond ONLY in JSON. No markdown.
-"""
-
-        memory_raw = model.generate_content(memory_prompt).text.strip()
-        memory_raw = memory_raw.replace("```json", "").replace("```", "").strip()
-
-        try:
-            memory_data = json.loads(memory_raw)
-        except Exception as e:
-            print("🔥 MEMORY JSON ERROR:", e)
-            print("RAW MEMORY AI:", memory_raw)
-            memory_data = {"save_memory": False}
-
-        # Save memory if valid
-        # -----------------------------
-# SAVE MEMORY IN USER-DOCUMENT FORMAT
-# -----------------------------
-        if memory_data.get("save_memory") and memory_data.get("memory"):
-
-            new_memory = memory_data["memory"]
-
-            # Get user's memory document (one per user)
-            existing_user_memory = memories_collection.find_one({"username": username})
-
-            if existing_user_memory:
-                memories_list = existing_user_memory.get("memories", [])
-
-                # Check if today's date already exists in memories[]
-                existing_entry = next((m for m in memories_list if m["date"] == date), None)
-
-                if existing_entry:
-                    # 🔄 Replace memory of that date (no duplicates)
-                    existing_entry["memory"] = new_memory
-                else:
-                    # ➕ Add new date-memory object
-                    memories_list.append({
-                        "date": date,
-                        "memory": new_memory
-                    })
-
-                # Update the main document
-                memories_collection.update_one(
-                    {"username": username},
-                    {
-                        "$set": {
-                            "memories": memories_list,
-                            "last_updated": timestamp_now
-                        }
-                    }
-                )
-
-            else:
-                # First memory document for this user
-                memories_collection.insert_one({
-                    "username": username,
-                    "memories": [
-                        {
-                            "date": date,
-                            "memory": new_memory
-                        }
-                    ],
-                    "last_updated": timestamp_now
-                })
-
-
-        # -----------------------------
-        # 3️⃣ CREATE JOURNAL ENTRY OBJECT
-        # -----------------------------
-        # -----------------------------
-        # 3️⃣ CREATE JOURNAL ENTRY OBJECT
+        # 1️⃣ SAVE JOURNAL ENTRY FIRST
         # -----------------------------
         new_entry = {
             "date": date,
             "text": encrypt_text(entry_text),
-            "sentiment": sentiment,
-            "ai_affirmation": ai_affirmation,
-            "ai_advice": ai_advice,
+            "emotion_hidden": None,
             "timestamp": timestamp_now,
             "last_updated": timestamp_now
         }
 
-        # -----------------------------
-        # 4️⃣ SAVE TO entries[] FORMAT
-        # -----------------------------
-
-        # Ensure user has one document
         journals_collection.update_one(
             {"username": username},
-            {
-                "$setOnInsert": {
-                    "username": username,
-                    "entries": []
-                },
-                "$set": {"last_updated": timestamp_now}
-            },
+            {"$setOnInsert": {"username": username, "entries": []},
+             "$set": {"last_updated": timestamp_now}},
             upsert=True
         )
 
-        # Try to replace existing entry for same date
         update_result = journals_collection.update_one(
             {"username": username, "entries.date": date},
             {"$set": {"entries.$": new_entry}}
         )
 
-        # If no entry exists for that date → push new entry
         if update_result.matched_count == 0:
             journals_collection.update_one(
                 {"username": username},
                 {"$push": {"entries": new_entry}}
             )
+
         # -----------------------------
-        # 4️⃣ MONTHLY SUMMARY GENERATION + STORE IN summaries COLLECTION
+        # 2️⃣ SINGLE AI CALL FOR EMOTION + QUESTION
         # -----------------------------
-        # Get month & year from the 'date' string
+        emotion_prompt = f"""
+        You are an emotionally intelligent journaling AI.
+
+        Tasks:
+        1. Identify ONE dominant emotion from:
+        [Happy, Sad, Anxious, Stressed, Angry, Lonely, Grateful, Hopeful, Guilty, Conflicted]
+
+        2. Generate ONE validation question:
+           - yes/no
+           - choice (2-3 options)
+           - reflection (short)
+
+        Respond EXACTLY in JSON:
+        {{
+            "emotion": "EmotionHere",
+            "question_type": "yes_no | choice | reflection",
+            "question": "Your question here",
+            "options": ["opt1", "opt2"]
+        }}
+
+        Journal: "{entry_text}"
+        """
+
         try:
-            dt = datetime.strptime(date, "%Y-%m-%d")
-            month_name = dt.strftime("%B")   # e.g. "November"
-            year_num = dt.year               # e.g. 2025
+            ai_raw = model.generate_content(emotion_prompt).text.strip()
+            ai_raw = ai_raw.replace("```json", "").replace("```", "").strip()
+            emotion_data = json.loads(ai_raw)
         except Exception as e:
-            print("🔥 Date parse error for summary:", e)
-            month_name = datetime.utcnow().strftime("%B")
-            year_num = datetime.utcnow().year
+            app.logger.error("AI JSON ERROR: %s\nRAW: %s", e, ai_raw)
+            emotion_data = {
+                "emotion": "Unknown",
+                "question_type": "reflection",
+                "question": "Can you tell me a bit more about how you're feeling?",
+                "options": []
+            }
 
-        # Collect all entries for the same user in the same month/year
-        # First fetch the user's single document
-        user_doc = journals_collection.find_one({"username": username})
-        month_texts = []
-        if user_doc:
-            for e in user_doc.get("entries", []):
-                try:
-                    entry_dt = datetime.strptime(e.get("date", ""), "%Y-%m-%d")
-                    if entry_dt.month == dt.month and entry_dt.year == dt.year:
-                        encrypted = e.get("text", "")
-                        decrypted = decrypt_text_safe(encrypted)
-                        if decrypted and decrypted.strip():
-                            month_texts.append(decrypted)
-                except Exception:
-                    continue
-
-
-        # If we have texts for the month, create a summary
-        if month_texts:
-            full_text = "\n\n".join([t for t in month_texts if t and t.strip()])
-
-            # Prompt for monthly summary (2-3 sentences)
-            summary_prompt = f"""
-You are a reflective journaling assistant.
-
-Summarize this month's emotions and overall mental health **from the user's perspective**, 
-using warm, personal, first-person language (“I felt…”, “I realized…”, “This month taught me…”).
-
-Guidelines:
-- Keep it 2–3 lines.
-- Make it sound like a personal reflection.
-- Do NOT speak like an outside observer.
-- Do NOT mention “the user”, “they”, or “their”.
-- Do NOT add advice or commentary — only the summary.
-
-Write it as if the user is summarizing their own month.
-
-Texts:
-{full_text}
-"""
-
-            try:
-                ai_summary_raw = model.generate_content(summary_prompt).text.strip()
-                # Remove markdown fences if any
-                ai_summary_raw = ai_summary_raw.replace("```", "").strip()
-                summary_text = ai_summary_raw
-            except Exception as e:
-                print("🔥 Summary generation error:", e)
-                summary_text = ""
-
-            # Upsert into summaries_collection (one document per user, summaries array)
-            existing_summary_doc = summaries_collection.find_one({"username": username})
-            month_key = f"{month_name} {year_num}"   # friendly label
-
-            if existing_summary_doc:
-                summaries_list = existing_summary_doc.get("summaries", [])
-                # find existing month entry
-                existing_month = next((s for s in summaries_list if s.get("month") == month_name and s.get("year") == year_num), None)
-                if existing_month:
-                    existing_month["summary"] = summary_text
-                    existing_month["last_journal_date"] = date
-                else:
-                    summaries_list.append({
-                        "month": month_name,
-                        "year": year_num,
-                        "summary": summary_text,
-                        "last_journal_date": date
-                    })
-                summaries_collection.update_one(
-                    {"username": username},
-                    {"$set": {"summaries": summaries_list, "last_updated": timestamp_now}}
-                )
-            else:
-                summaries_collection.insert_one({
-                    "username": username,
-                    "summaries": [{
-                        "month": month_name,
-                        "year": year_num,
-                        "summary": summary_text,
-                        "last_journal_date": date
-                    }],
-                    "last_updated": timestamp_now
-                })
-
+        dominant_emotion = emotion_data.get("emotion", "Unknown")
 
         # -----------------------------
-        # 5️⃣ RESPONSE
+        # 3️⃣ UPDATE JOURNAL WITH EMOTION
+        # -----------------------------
+        journals_collection.update_one(
+            {"username": username, "entries.date": date},
+            {"$set": {"entries.$.emotion_hidden": dominant_emotion}}
+        )
+
+        # -----------------------------
+        # 4️⃣ RETURN FIRST VALIDATION QUESTION
         # -----------------------------
         return jsonify({
-            "message": "Journal saved successfully",
-            "sentiment": sentiment,
-            "ai_affirmation": ai_affirmation,
-            "ai_advice": ai_advice
+            "message": "Journal saved",
+            "emotion_hidden": dominant_emotion,
+            "question_type": emotion_data.get("question_type"),
+            "question": emotion_data.get("question"),
+            "options": emotion_data.get("options") or []
         }), 200
 
     except Exception as e:
-        print("🔥 SERVER ERROR:", e)
+        app.logger.error("SERVER ERROR (/save-journal): %s\n%s", e, traceback.format_exc())
         return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route('/answer-question', methods=['POST'])
+def answer_question():
+    try:
+        data = request.get_json(silent=True)
+        if not data:
+            return jsonify({"error": "Invalid JSON body"}), 400
+
+        username = (data.get('username') or "").strip()
+        date = data.get('date') or datetime.utcnow().strftime('%Y-%m-%d')
+        answer_text = (data.get('answer') or "").strip()
+
+        if not username:
+            return jsonify({'error': 'Missing username'}), 400
+        if not answer_text:
+            return jsonify({'error': 'Missing answer'}), 400
+
+        sessions_col = mongo.db.validation_sessions
+        journals_col = mongo.db.journals
+        timestamp_now = datetime.utcnow()
+
+        # Try to find existing session
+        session_doc = sessions_col.find_one({"username": username, "date": date})
+
+        # If no session exists, create one from the saved journal entry (upsert-style so duplicate requests are OK)
+        if not session_doc:
+            user_doc = journals_col.find_one({"username": username})
+            if not user_doc:
+                return jsonify({"error": "No journal found for user"}), 404
+
+            entry_obj = next((e for e in user_doc.get("entries", []) if e.get("date") == date), None)
+            if not entry_obj:
+                return jsonify({"error": "No journal entry for that date"}), 404
+
+            encrypted = entry_obj.get("text", "") or ""
+            journal_text = decrypt_text_safe(encrypted) or ""
+            emotion_hidden = entry_obj.get("emotion_hidden", "Unknown")
+
+            # Upsert a session doc
+            sessions_col.update_one(
+                {"username": username, "date": date},
+                {"$setOnInsert": {
+                    "username": username,
+                    "date": date,
+                    "journal_text": journal_text,
+                    "emotion_hidden": emotion_hidden,
+                    "answers": [],
+                    "last_answered_step": 0,
+                    "created_at": timestamp_now,
+                    "updated_at": timestamp_now,
+                    "completed": False
+                }},
+                upsert=True
+            )
+            session_doc = sessions_col.find_one({"username": username, "date": date})
+
+        # if session completed
+        if session_doc.get("completed"):
+            return jsonify({"error": "Validation session already completed. Call /complete or start a new journal."}), 400
+
+        last_step = int(session_doc.get("last_answered_step", 0))
+        next_step = last_step + 1
+
+        # limit to 3 steps
+        if next_step > 3:
+            return jsonify({"message": "All questions already answered. Call /complete to finish.", "complete": True}), 200
+
+        # append answer
+        sessions_col.update_one(
+            {"username": username, "date": date},
+            {"$push": {"answers": {"step": next_step, "answer": answer_text}}, "$set": {"last_answered_step": next_step, "updated_at": timestamp_now}}
+        )
+
+        # after saving, if we've reached 3 answers => ask client to call /complete
+        if next_step >= 3:
+            return jsonify({
+                "message": "All questions answered. Call /complete to generate your affirmation and advice.",
+                "complete": True
+            }), 200
+
+        # otherwise generate the next question
+        session_doc = sessions_col.find_one({"username": username, "date": date})  # refresh
+        answers_list = session_doc.get("answers", []) or []
+        answers_context = "\n".join([f"Q{a['step']}_answer: {a['answer']}" for a in answers_list])
+
+        # ask for the next question
+        question_prompt = f""" You are an emotionally intelligent journaling assistant. Do NOT reveal the detected emotion to the user.  Context: Journal: \"\"\"{session_doc.get('journal_text','')}\"\"\" Previous answers: {answers_context}  Task: Based on the journal and previous answers, generate ONE interactive validation question to ask next. - If the next question should be a Yes/No question, set question_type = "yes_no". - If it should be a short multiple-choice, set question_type = "choice" and provide 2-3 concise options. - If it should be a reflection prompt, set question_type = "reflection" and make it 1 short sentence.  Keep questions short, contextual, and directly tied to the journal & prior answers. Respond ONLY in JSON in this exact format (no extra text): {{   "question_type": "<yes_no | choice | reflection>",   "question": "<the question text>",   "options": ["opt1","opt2"]   # include only when question_type is "choice" }} """
+
+        ai_raw = model.generate_content(question_prompt).text.strip()
+        ai_raw = ai_raw.replace("```json", "").replace("```", "").strip()
+
+        try:
+            q_data = json.loads(ai_raw)
+        except Exception as e:
+            app.logger.error("NEXT QUESTION JSON ERROR: %s\nRAW: %s", e, ai_raw)
+            # fallback question
+            q_data = {"question_type": "reflection", "question": "How did that make you feel?", "options": []}
+
+        q_type = q_data.get("question_type", "reflection")
+        q_text = q_data.get("question", "How did that make you feel?")
+        q_options = q_data.get("options") or []
+
+        # Save next question into session for traceability
+        upcoming_step = int(session_doc.get("last_answered_step", 0)) + 1 + 1  # next step user will answer
+        sessions_col.update_one(
+            {"username": username, "date": date},
+            {"$set": {"next_question": {"step": upcoming_step, "question_type": q_type, "question": q_text, "options": q_options}, "updated_at": timestamp_now}}
+        )
+
+        response_payload = {
+            "message": "Next question",
+            "question_type": q_type,
+            "question": q_text,
+            "options": q_options
+        }
+
+        return jsonify(response_payload), 200
+
+    except Exception as e:
+        app.logger.error("SERVER ERROR (/answer-question): %s\n%s", e, traceback.format_exc())
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@app.route('/complete', methods=['POST'])
+def complete_validation_and_create_advice():
+    try:
+        data = request.get_json(silent=True) or {}
+        username = (data.get('username') or "").strip()
+        date = data.get('date') or datetime.utcnow().strftime('%Y-%m-%d')
+
+        if not username:
+            return jsonify({'error': 'Missing username'}), 400
+
+        sessions_col = mongo.db.validation_sessions
+        journals_col = mongo.db.journals
+
+        session_doc = sessions_col.find_one({"username": username, "date": date})
+        if not session_doc:
+            return jsonify({"error": "No active validation session found for this user/date"}), 404
+
+        if session_doc.get("completed"):
+            result = session_doc.get("result", {})
+            return jsonify({"message": "Already completed", "advice": result.get("advice"), "affirmation": result.get("affirmation")}), 200
+
+        answers = session_doc.get("answers", [])
+        if len(answers) < 1:
+            return jsonify({"error": "At least one validation answer required before completing."}), 400
+
+        journal_text = session_doc.get("journal_text", "")
+        emotion_hidden = session_doc.get("emotion_hidden", "Unknown")
+        answers_context = "\n".join([f"Q{a['step']}_answer: {a['answer']}" for a in answers])
+
+        final_prompt = f""" You are a compassionate journaling coach. Do NOT reveal the detected emotion label to the user.  Context: Journal: \"\"\"{journal_text}\"\"\" Validation answers: {answers_context}  Task: 1) Generate a short, practical piece of advice (2-3 sentences) that directly addresses the user's experience and the validation answers. 2) Generate a single-line supportive affirmation (1 line).  Respond ONLY in JSON with the exact keys: {{   "advice": "<2-3 sentence practical advice>",   "affirmation": "<one-line supportive affirmation>" }} Keep language warm, non-judgmental, and actionable. Do not include therapy diagnoses. Do not mention the hidden emotion label. """
+
+        ai_raw = model.generate_content(final_prompt).text.strip()
+        ai_raw = ai_raw.replace("```json", "").replace("```", "").strip()
+
+        try:
+            final_data = json.loads(ai_raw)
+        except Exception as e:
+            app.logger.error("FINAL JSON ERROR: %s\nRAW FINAL: %s", e, ai_raw)
+            return jsonify({"error": "Invalid AI JSON for final advice"}), 500
+
+        advice_text = (final_data.get("advice") or "").strip()
+        affirmation_text = (final_data.get("affirmation") or "").strip()
+
+        # Save advice + affirmation into the user's journal entry
+        user_doc = journals_col.find_one({"username": username})
+        if not user_doc:
+            return jsonify({"error": "User journal not found"}), 404
+
+        entry_obj = next((e for e in user_doc.get("entries", []) if e.get("date") == date), None)
+        if not entry_obj:
+            return jsonify({"error": "Journal entry for given date not found"}), 404
+
+        updated_entry = dict(entry_obj)
+        updated_entry["ai_advice"] = advice_text
+        updated_entry["ai_affirmation"] = affirmation_text
+        updated_entry["last_updated"] = datetime.utcnow()
+
+        journals_col.update_one({"username": username, "entries.date": date}, {"$set": {"entries.$": updated_entry, "last_updated": datetime.utcnow()}})
+
+        sessions_col.update_one({"username": username, "date": date}, {"$set": {"completed": True, "completed_at": datetime.utcnow(), "result": {"advice": advice_text, "affirmation": affirmation_text}, "updated_at": datetime.utcnow()}})
+
+        return jsonify({"message": "Validation complete", "advice": advice_text, "affirmation": affirmation_text}), 200
+
+    except Exception as e:
+        app.logger.error("SERVER ERROR (/complete): %s\n%s", e, traceback.format_exc())
+        return jsonify({"error": "Internal server error"}), 500
+
 
 
 @app.route('/affirmations', methods=['POST'])
@@ -482,7 +492,8 @@ def get_journals():
                 response_data.append({
                     "date": entry_date,
                     "text": text_plain,  # decrypted text
-                    "sentiment": (entry.get("sentiment") or "").strip(),
+                    "sentiment": entry.get("sentiment") or entry.get("emotion_hidden") or "Unknown",
+                    "emotion_hidden": entry.get("emotion_hidden"),
                     "affirmation": (entry.get("ai_affirmation") or "").strip(),
                     "advice": (entry.get("ai_advice") or "").strip(),
                     "timestamp": ts

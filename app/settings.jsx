@@ -1,3 +1,4 @@
+// Updated Settings.jsx with added Privacy & Security tab
 import React from "react";
 import {
   View,
@@ -13,6 +14,7 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInUp } from "react-native-reanimated";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+
 export default function Settings() {
   const router = useRouter();
 
@@ -25,11 +27,9 @@ export default function Settings() {
 
   return (
     <View style={styles.container}>
-      {/* 🔥 Status bar same color as header */}
       <StatusBar backgroundColor="#FBEEFC" barStyle="dark-content" />
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="chevron-back" size={26} color="black" />
@@ -37,10 +37,8 @@ export default function Settings() {
           <Text style={styles.headerTitle}>Settings</Text>
         </View>
 
-        {/* Section Title */}
         <Text style={styles.sectionTitle}>GENERAL</Text>
 
-        {/* Rows */}
         <Animated.View entering={FadeInUp.duration(300)}>
           <SettingRow
             icon={<Feather name="user" size={22} color="#333" />}
@@ -62,7 +60,15 @@ export default function Settings() {
           />
         </Animated.View>
 
-        {/* Logout with full logic */}
+        {/* ✅ Added Privacy & Security Tab */}
+        <Animated.View entering={FadeInUp.delay(140).duration(300)}>
+          <SettingRow
+            icon={<Feather name="lock" size={22} color="#333" />}
+            label="Privacy & Security"
+            onPress={() => router.push("/privacy")}
+          />
+        </Animated.View>
+
         <Animated.View entering={FadeInUp.delay(160).duration(300)}>
           <TouchableOpacity
             style={styles.row}
@@ -77,16 +83,13 @@ export default function Settings() {
           >
             <View style={styles.rowLeft}>
               <Feather name="log-out" size={22} color="#e63946" />
-              <Text style={[styles.rowLabel, { color: "#e63946" }]}>
-                Logout
-              </Text>
+              <Text style={[styles.rowLabel, { color: "#e63946" }]}>Logout</Text>
             </View>
 
             <Ionicons name="chevron-forward" size={20} color="#999" />
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Delete account */}
         <Animated.View entering={FadeInUp.delay(200).duration(300)}>
           <SettingRow
             icon={<MaterialIcons name="delete-outline" size={22} color="#333" />}
@@ -94,10 +97,8 @@ export default function Settings() {
           />
         </Animated.View>
 
-        {/* Second Section */}
         <Text style={[styles.sectionTitle, { marginTop: 20 }]}>FEEDBACK</Text>
 
-        {/* Report Bug - Opens WebView */}
         <Animated.View entering={FadeInUp.delay(260).duration(300)}>
           <SettingRow
             icon={<Feather name="alert-triangle" size={22} color="#333" />}
@@ -106,7 +107,6 @@ export default function Settings() {
           />
         </Animated.View>
 
-        {/* Send Feedback - Opens WebView */}
         <Animated.View entering={FadeInUp.delay(300).duration(300)}>
           <SettingRow
             icon={<Feather name="message-circle" size={22} color="#333" />}
@@ -125,7 +125,6 @@ const SettingRow = ({ icon, label, onPress }) => (
       {icon}
       <Text style={styles.rowLabel}>{label}</Text>
     </View>
-
     <Ionicons name="chevron-forward" size={20} color="#999" />
   </TouchableOpacity>
 );
@@ -134,7 +133,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#FBF8EF",
-    paddingTop: 0, // removed since StatusBar now matches header
   },
   header: {
     flexDirection: "row",

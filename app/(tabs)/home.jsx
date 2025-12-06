@@ -107,6 +107,7 @@ export default function Home() {
   return (
     <View style={{ flex: 1, backgroundColor: "#FBF8EF" }}>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{
           paddingBottom: 20,
           backgroundColor: "#FBF8EF",

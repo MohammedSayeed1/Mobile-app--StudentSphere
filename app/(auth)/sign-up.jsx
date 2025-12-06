@@ -52,7 +52,7 @@ const SignUp = () => {
     try {
       setIsSubmitting(true);
 
-      const res = await fetch("http://192.168.29.215:5010/signup", {
+      const res = await fetch("http://192.168.29.215:5010", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
