@@ -1,4 +1,4 @@
-// JournalEntry.js (Replace your existing file contents with this)
+// JournalEntry.js (full updated file with micro-checkins integration)
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -21,23 +21,24 @@ import { useFonts } from "expo-font";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import LottieView from 'lottie-react-native';
 
-// Helper functions (same as your originals)
-const affirmations = [
-  "I am enough just as I am.",
-  "I choose peace over worry.",
-  "Today is full of endless possibilities.",
-  "I am growing and learning every day.",
-  "My thoughts become my reality.",
-  "I deserve love, success, and happiness.",
-  "I let go of what I can’t control.",
-  "I am proud of how far I’ve come."
-];
+// Micro-checkin components (adjust path if your project is different)
+import EmojiCheckIn from '../../../components/MicroCheckins/emojiCheckin';
+import TagsCheckIn from '../../../components/MicroCheckins/tagCheckin';
+import SliderCheckin from '../../../components/MicroCheckins/sliderCheckin';
 
+// -----------------------------
+// small inline ValidationModal (updated to accept initialQuestionData prop)
+// If you already have a separate ValidationModal component file, you can keep that
+// and export a prop interface that matches these props. For simplicity I include it here.
+// -----------------------------
+// HELPER: READ USERNAME
+// -----------------------------
 const readUsername = async () => {
   try {
-    let username = await AsyncStorage.getItem('username');
+    let username = await AsyncStorage.getItem("username");
+
     if (!username) {
-      const raw = await AsyncStorage.getItem('user');
+      const raw = await AsyncStorage.getItem("user");
       if (raw) {
         try {
           const parsed = JSON.parse(raw);
@@ -47,17 +48,16 @@ const readUsername = async () => {
         }
       }
     }
-    if (username && username !== 'null') return String(username).trim();
+
+    if (username && username !== "null") return String(username).trim();
     return null;
-  } catch {
+  } catch (e) {
+    console.log("Error reading username:", e);
     return null;
   }
 };
 
-// -----------------------------
-// VALIDATION MODAL COMPONENT
-// -----------------------------
-function ValidationModal({ isVisible, closeModal, journalEntry }) {
+function ValidationModal({ isVisible, closeModal, journalEntry, initialQuestionData }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
@@ -73,68 +73,80 @@ function ValidationModal({ isVisible, closeModal, journalEntry }) {
 
   useEffect(() => {
     const fetchUsername = async () => {
-      const u = await readUsername();
-      if (u) setUsername(u);
+      const raw = await AsyncStorage.getItem('username');
+      if (!raw) {
+        const r = await AsyncStorage.getItem('user');
+        if (r) {
+          try {
+            const parsed = JSON.parse(r);
+            setUsername(parsed?.username ?? parsed?.name ?? '');
+          } catch {
+            setUsername(r || '');
+          }
+        }
+        return;
+      }
+      setUsername(raw);
     };
     fetchUsername();
   }, []);
 
-  // start validation only when we have both journalEntry and username
+  // If backend already returned first question (initialQuestionData), use it.
   useEffect(() => {
-    if (isVisible && username) {
-        startValidation();
-    }
-}, [isVisible, username]);
-
-
-  const startValidation = async () => {
-    try {
-      setBusy(true);
-      const resp = await fetch("http://192.168.29.215:5010/save-journal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, entry: journalEntry, date }),
-      });
-      const data = await resp.json();
-
-      if (!resp.ok) {
-        Alert.alert("Error", data?.error || "Could not start validation.");
-        closeModal();
-        return;
-      }
-
-      setQuestionText(data.question || "");
-      setQuestionType(data.question_type || "reflection");
-      setOptions(data.options || []);
+    if (!isVisible) {
+      // reset modal state on close
       setCurrentStep(1);
+      setQuestionText("");
+      setQuestionType("");
+      setOptions([]);
       setTextAnswer("");
       setFinalResult(null);
       setShowFinalCard(false);
-    } catch (err) {
-      console.log("Error starting validation:", err);
-      Alert.alert("Error", "Could not start validation.");
-      closeModal();
-    } finally {
       setBusy(false);
+      return;
     }
-  };
+
+    if (initialQuestionData && initialQuestionData.question) {
+      setQuestionText(initialQuestionData.question);
+      setQuestionType(initialQuestionData.question_type || "reflection");
+      setOptions(initialQuestionData.options || []);
+      setCurrentStep(1);
+      return;
+    }
+
+    // if no initial question provided, do nothing here — parent should call server
+    // or you can implement startValidation() to call /save-journal but we avoid duplicate calls.
+  }, [isVisible, initialQuestionData]);
 
   const submitAnswer = async (answer) => {
-    // validate presence of answer (for reflection ensure user typed something)
-    if (!answer || (typeof answer === "string" && !answer.trim())) {
+    if (!answer || (typeof answer === 'string' && !answer.trim())) {
       Alert.alert("Empty answer", "Please enter a response before submitting.");
       return;
     }
 
-    // ensure username exists
     let u = username;
     if (!u) {
-      u = await readUsername();
-      if (!u) {
-        Alert.alert("Error", "No username found. Please login again.");
-        return;
+      const raw = await AsyncStorage.getItem('username');
+      if (raw) {
+        u = raw;
+        setUsername(u);
+      } else {
+        const r = await AsyncStorage.getItem('user');
+        if (r) {
+          try {
+            const parsed = JSON.parse(r);
+            u = parsed?.username ?? parsed?.name ?? '';
+            setUsername(u);
+          } catch {
+            u = r || '';
+            setUsername(u);
+          }
+        }
       }
-      setUsername(u);
+    }
+    if (!u) {
+      Alert.alert("Error", "Please login again.");
+      return;
     }
 
     try {
@@ -147,7 +159,6 @@ function ValidationModal({ isVisible, closeModal, journalEntry }) {
       const data = await resp.json();
 
       if (!resp.ok) {
-        // show server-provided error message if any
         Alert.alert("Error", data?.error || "Could not submit answer.");
         setBusy(false);
         return;
@@ -158,6 +169,7 @@ function ValidationModal({ isVisible, closeModal, journalEntry }) {
         return;
       }
 
+      // set next question
       setQuestionText(data.question || "");
       setQuestionType(data.question_type || "reflection");
       setOptions(data.options || []);
@@ -246,7 +258,7 @@ function ValidationModal({ isVisible, closeModal, journalEntry }) {
   return (
     <Modal
       isVisible={isVisible}
-      onBackdropPress={() => { if (!busy) closeModal(); }}
+      onBackdropPress={() => { if (!busy) { closeModal(); } }}
       animationIn="zoomIn"
       animationOut="zoomOut"
       backdropOpacity={0.4}
@@ -266,6 +278,12 @@ function ValidationModal({ isVisible, closeModal, journalEntry }) {
             ) : (
               renderQuestionBody()
             )}
+
+            <View style={{ marginTop: 14, flexDirection: "row", justifyContent: "flex-end" }}>
+              <TouchableOpacity onPress={() => { if (!busy) closeModal(); }} style={{ padding: 8 }}>
+                <Text style={{ color: "#3c3d37", fontFamily: "Gilroy-Bold" }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
           </>
         ) : (
           <>
@@ -282,9 +300,16 @@ function ValidationModal({ isVisible, closeModal, journalEntry }) {
                 <Text style={styles.modalButtonText}>Continue Writing</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={[styles.modalButton, { backgroundColor: "#3c3d37" }]} onPress={() => { closeModal(); router.push("/diary"); }}>
-                <Text style={styles.modalButtonText}>Go to Diary</Text>
+              <TouchableOpacity 
+                style={[styles.modalButton, { backgroundColor: "#3c3d37" }]}
+                onPress={() => { 
+                  closeModal(); 
+                  router.push("/tasks"); // NEW ROUTE
+                }}
+              >
+                <Text style={styles.modalButtonText}>View Tasks</Text>
               </TouchableOpacity>
+
             </View>
           </>
         )}
@@ -299,9 +324,24 @@ function ValidationModal({ isVisible, closeModal, journalEntry }) {
 export default function JournalEntry() {
   const [entry, setEntry] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [affirmation] = useState(affirmations[Math.floor(Math.random() * affirmations.length)]);
+  const [affirmation] = useState([
+    "I am enough just as I am.",
+    "I choose peace over worry.",
+    "Today is full of endless possibilities.",
+    "I am growing and learning every day.",
+    "My thoughts become my reality.",
+    "I deserve love, success, and happiness.",
+    "I let go of what I can’t control.",
+    "I am proud of how far I’ve come."
+  ][Math.floor(Math.random() * 8)]);
   const [username, setUsername] = useState('');
-  const [modalVisible, setModalVisible] = useState(false);
+  const [validationVisible, setValidationVisible] = useState(false);
+  const [validationInitialData, setValidationInitialData] = useState(null);
+
+  // micro-checkin state
+  const [microType, setMicroType] = useState(null); // 'emoji' | 'tags' | 'happimeter'
+  const [microVisible, setMicroVisible] = useState(false);
+
   const [loading, setLoading] = useState(false);
 
   const [showPrivacyCard, setShowPrivacyCard] = useState(true);
@@ -352,13 +392,20 @@ export default function JournalEntry() {
     init();
   }, []);
 
-  const saveJournal = async () => {
+  // random micro-checkin selector (equal weights by default)
+  const pickRandomMicro = () => {
+    const list = ['emoji', 'tags', 'happimeter'];
+    const idx = Math.floor(Math.random() * list.length);
+    return list[idx];
+  };
+
+  // when user taps Save
+  const onSavePress = async () => {
     if (!entry || !entry.trim()) {
       Alert.alert("Empty journal", "Please write something before saving.");
       return;
     }
 
-    // Ensure username present before opening modal
     const u = username || await readUsername();
     if (!u) {
       Alert.alert("Missing username", "Please login again.");
@@ -366,8 +413,61 @@ export default function JournalEntry() {
     }
     setUsername(u);
 
-    setModalVisible(true);
+    // pick random micro and show its modal
+    const pick = pickRandomMicro();
+    setMicroType(pick);
+    setMicroVisible(true);
   };
+
+  // handle micro-complete; 'value' depends on microType format:
+  // emoji => string label, tags => array of strings, happimeter => number
+  const handleMicroComplete = async (type, value) => {
+    setMicroVisible(false);
+
+    // build micro payload
+    const micro = { type, value };
+
+    // send journal + micro to backend -> backend returns the first validation question (or default)
+    const date = new Date().toISOString().split("T")[0];
+    try {
+      setLoading(true);
+      const resp = await fetch("http://192.168.29.215:5010/save-journal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username,
+          entry,
+          date,
+          micro // added micro-checkin info
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        Alert.alert("Save error", data?.error || "Could not save journal.");
+        return;
+      }
+
+      // Backend returns question_type, question, options
+      setValidationInitialData({
+        question_type: data.question_type,
+        question: data.question,
+        options: data.options || []
+      });
+
+      // open validation modal
+      setValidationVisible(true);
+    } catch (err) {
+      console.error("Save journal error:", err);
+      Alert.alert("Error", "Could not save journal. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // micro-checkin UI handlers
+  const openEmoji = () => setMicroType('emoji') || setMicroVisible(true);
+  const openTags = () => setMicroType('tags') || setMicroVisible(true);
+  const openSlider = () => setMicroType('happimeter') || setMicroVisible(true);
 
   return (
     <KeyboardAwareScrollView
@@ -417,7 +517,7 @@ export default function JournalEntry() {
           />
         </ImageBackground>
 
-        <CustomButton title="Save Journal" containerStyles="mt-7" handlePress={saveJournal} />
+        <CustomButton title="Save Journal" containerStyles="mt-7" handlePress={onSavePress} />
 
         {loading && (
           <View style={styles.loadingOverlay}>
@@ -425,14 +525,39 @@ export default function JournalEntry() {
           </View>
         )}
 
-        <ValidationModal isVisible={modalVisible} closeModal={() => setModalVisible(false)} journalEntry={entry} />
+        {/* Micro-checkin modals (render exactly one based on microType) */}
+        <EmojiCheckIn
+          visible={microVisible && microType === 'emoji'}
+          onClose={() => setMicroVisible(false)}
+          onSelectEmotion={(label) => handleMicroComplete('emoji', label)}
+        />
+
+        <TagsCheckIn
+          visible={microVisible && microType === 'tags'}
+          onClose={() => setMicroVisible(false)}
+          onComplete={(tags) => handleMicroComplete('tags', tags)}
+        />
+
+        <SliderCheckin
+          isVisible={microVisible && microType === 'happimeter'}
+          onClose={() => setMicroVisible(false)}
+          onSubmit={(val) => handleMicroComplete('happimeter', val)}
+        />
+
+        {/* Validation Modal (receives initial question data from server) */}
+        <ValidationModal
+          isVisible={validationVisible}
+          closeModal={() => { setValidationVisible(false); setValidationInitialData(null); }}
+          journalEntry={entry}
+          initialQuestionData={validationInitialData}
+        />
       </View>
     </KeyboardAwareScrollView>
   );
 }
 
 // -----------------------------
-// STYLES (same as your previous styles)
+// Styles (kept largely same as your previous styles; minor modal style changes retained)
 // -----------------------------
 const styles = StyleSheet.create({
   container: { padding: 20, flex: 1 },
@@ -452,9 +577,9 @@ const styles = StyleSheet.create({
   loadingOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center', zIndex: 1000, backgroundColor: "rgba(255, 255, 255, 0.5)" },
 
   // MODAL STYLES
-  modalContainer: { backgroundColor: "white", padding: 22, borderRadius: 16, alignItems: "stretch", marginTop:70 },
-  modalTitle: { fontSize: 22, fontFamily: "Gilroy-Bold", marginBottom: 8, textAlign: "center" },
-  modalHeading: { fontSize: 18, fontFamily: "Gilroy-Bold", marginTop: 12 },
+  modalContainer: { backgroundColor: "white", padding: 22, borderRadius: 16, alignItems: "stretch", marginTop:90 },
+  modalTitle: { fontSize: 20, fontFamily: "Gilroy-Bold", marginBottom: 8, textAlign: "center" },
+  modalHeading: { fontSize: 17, fontFamily: "Gilroy-Bold", marginTop: 12 },
   modalText: { fontSize: 16, fontFamily: "Gilroy-Regular", marginTop: 6, textAlign:"justify" },
   optionBtn: { padding: 12, backgroundColor: "#F2F2F2", borderRadius: 12, marginVertical: 6, alignItems: "center" },
   optionText: { fontFamily: "Gilroy-Bold", fontSize: 16, color: "#333" },
@@ -462,6 +587,6 @@ const styles = StyleSheet.create({
   submitBtn: { marginTop: 12, padding: 12, backgroundColor: "#3c3d37", borderRadius: 12, alignItems: "center" },
   submitText: { color: "white", fontFamily: "Gilroy-Bold", fontSize: 15 },
   modalButtons: { marginTop: 16, flexDirection: "row", justifyContent: "space-between" },
-  modalButton: { flex: 1, padding: 12, backgroundColor: "#8BC34A", borderRadius: 12, alignItems: "center", marginHorizontal: 4 },
+  modalButton: { flex: 1, padding: 12, backgroundColor: "#1C352D", borderRadius: 12, alignItems: "center", marginHorizontal: 4,},
   modalButtonText: { color: "white", fontFamily: "Gilroy-Bold", fontSize: 15}
 });

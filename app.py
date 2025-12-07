@@ -5,42 +5,55 @@ import bcrypt
 import os
 import json
 from dotenv import load_dotenv
-from datetime import datetime
-import google.generativeai as genai
+from datetime import datetime, timedelta
 from collections import defaultdict
 from cryptography.fernet import Fernet
 import traceback
+
+# NEW: Import Groq
+from groq import Groq
 
 
 # Load environment variables
 load_dotenv()
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-genai.configure(api_key=GOOGLE_API_KEY)
-ENCRYPTION_KEY = os.getenv("FERNET_KEY")
-# Load Fernet key
+# Load Groq API Key
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+
+if not GROQ_API_KEY:
+    raise ValueError("❌ GROQ_API_KEY is missing. Add it to your .env file.")
+
+# Initialize Groq Client
+client = Groq(api_key=GROQ_API_KEY)
+
+# Encryption Key
 ENCRYPTION_KEY = os.getenv("FERNET_KEY")
 
 if not ENCRYPTION_KEY:
     raise ValueError("❌ FERNET_KEY is missing. Add it in your .env")
 
-# Fernet expects BYTES, not a string
+# Fernet expects BYTES
 fernet = Fernet(ENCRYPTION_KEY.encode())
 
-# Choose model
-model = genai.GenerativeModel("gemini-2.0-flash")
+# (NO GEMINI ANYMORE)
+# Deleted:
+# genai.configure(api_key=GOOGLE_API_KEY)
+# model = genai.GenerativeModel("gemini-2.0-flash-lite")
 
+# Flask setup
 app = Flask(__name__)
 CORS(app)
 
 app.config["MONGO_URI"] = os.getenv("MONGO_URI")
 mongo = PyMongo(app)
+
 # Collections (global)
 users_collection = mongo.db.users
 journals_collection = mongo.db.journals
 memories_collection = mongo.db.memories
 summaries_collection = mongo.db.summaries
 calm_quest_collection = mongo.db.calm_quest
+
 
 def encrypt_text(plain_text):
     """Encrypt journal text before saving. Returns string or None."""
@@ -135,6 +148,10 @@ def save_journal():
         username = (data.get('username') or "").strip()
         entry_text = (data.get('entry') or "").strip()
         date = data.get('date') or datetime.utcnow().strftime('%Y-%m-%d')
+        micro_checkin = data.get("micro")  # 🔥 Capture micro-checkin from frontend
+        print("🔥 Micro checkin received:", micro_checkin)
+
+
 
         if not username:
             return jsonify({'error': 'Missing username'}), 400
@@ -154,10 +171,12 @@ def save_journal():
         new_entry = {
             "date": date,
             "text": encrypt_text(entry_text),
+            "micro_checkin": micro_checkin,   # 🔥 Save micro-checkin
             "emotion_hidden": None,
             "timestamp": timestamp_now,
             "last_updated": timestamp_now
         }
+
 
         journals_collection.update_one(
             {"username": username},
@@ -183,6 +202,9 @@ def save_journal():
         emotion_prompt = f"""
         You are an emotionally intelligent journaling AI.
 
+        User's micro check-in:
+        {json.dumps(micro_checkin, indent=2)}
+
         Tasks:
         1. Identify ONE dominant emotion from:
         [Happy, Sad, Anxious, Stressed, Angry, Lonely, Grateful, Hopeful, Guilty, Conflicted]
@@ -203,18 +225,26 @@ def save_journal():
         Journal: "{entry_text}"
         """
 
+        ai_raw = None
         try:
-            ai_raw = model.generate_content(emotion_prompt).text.strip()
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": emotion_prompt}]
+            )
+            ai_raw = response.choices[0].message.content.strip()
             ai_raw = ai_raw.replace("```json", "").replace("```", "").strip()
             emotion_data = json.loads(ai_raw)
+
         except Exception as e:
-            app.logger.error("AI JSON ERROR: %s\nRAW: %s", e, ai_raw)
+            app.logger.error(f"AI JSON ERROR: {e}\nRAW: {ai_raw if ai_raw else 'NO AI OUTPUT'}")
             emotion_data = {
                 "emotion": "Unknown",
                 "question_type": "reflection",
-                "question": "Can you tell me a bit more about how you're feeling?",
+                "question": "Can you tell me more about how you're feeling?",
                 "options": []
             }
+
+
 
         dominant_emotion = emotion_data.get("emotion", "Unknown")
 
@@ -329,26 +359,54 @@ def answer_question():
         # ask for the next question
         question_prompt = f""" You are an emotionally intelligent journaling assistant. Do NOT reveal the detected emotion to the user.  Context: Journal: \"\"\"{session_doc.get('journal_text','')}\"\"\" Previous answers: {answers_context}  Task: Based on the journal and previous answers, generate ONE interactive validation question to ask next. - If the next question should be a Yes/No question, set question_type = "yes_no". - If it should be a short multiple-choice, set question_type = "choice" and provide 2-3 concise options. - If it should be a reflection prompt, set question_type = "reflection" and make it 1 short sentence.  Keep questions short, contextual, and directly tied to the journal & prior answers. Respond ONLY in JSON in this exact format (no extra text): {{   "question_type": "<yes_no | choice | reflection>",   "question": "<the question text>",   "options": ["opt1","opt2"]   # include only when question_type is "choice" }} """
 
-        ai_raw = model.generate_content(question_prompt).text.strip()
-        ai_raw = ai_raw.replace("```json", "").replace("```", "").strip()
+        ai_raw = None
 
         try:
-            q_data = json.loads(ai_raw)
-        except Exception as e:
-            app.logger.error("NEXT QUESTION JSON ERROR: %s\nRAW: %s", e, ai_raw)
-            # fallback question
-            q_data = {"question_type": "reflection", "question": "How did that make you feel?", "options": []}
+            # Use Groq instead of Gemini
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": question_prompt}]
+            )
 
+            ai_raw = response.choices[0].message.content.strip()
+            ai_raw = ai_raw.replace("```json", "").replace("```", "").strip()
+
+            q_data = json.loads(ai_raw)
+
+        except Exception as e:
+            app.logger.error("NEXT QUESTION JSON ERROR: %s\nRAW: %s", e, ai_raw if ai_raw else "NO AI OUTPUT")
+            
+            # Fallback question
+            q_data = {
+                "question_type": "reflection",
+                "question": "How did that make you feel?",
+                "options": []
+            }
+
+
+        # Extract values
         q_type = q_data.get("question_type", "reflection")
         q_text = q_data.get("question", "How did that make you feel?")
         q_options = q_data.get("options") or []
 
-        # Save next question into session for traceability
-        upcoming_step = int(session_doc.get("last_answered_step", 0)) + 1 + 1  # next step user will answer
+        # Save next question into session
+        upcoming_step = int(session_doc.get("last_answered_step", 0)) + 2
+
         sessions_col.update_one(
             {"username": username, "date": date},
-            {"$set": {"next_question": {"step": upcoming_step, "question_type": q_type, "question": q_text, "options": q_options}, "updated_at": timestamp_now}}
+            {
+                "$set": {
+                    "next_question": {
+                        "step": upcoming_step,
+                        "question_type": q_type,
+                        "question": q_text,
+                        "options": q_options
+                    },
+                    "updated_at": timestamp_now
+                }
+            }
         )
+
 
         response_payload = {
             "message": "Next question",
@@ -376,60 +434,248 @@ def complete_validation_and_create_advice():
 
         sessions_col = mongo.db.validation_sessions
         journals_col = mongo.db.journals
+        tasks_col = mongo.db.wellbeing_tasks
+        history_col = mongo.db.emotion_history
 
         session_doc = sessions_col.find_one({"username": username, "date": date})
         if not session_doc:
-            return jsonify({"error": "No active validation session found for this user/date"}), 404
+            return jsonify({"error": "No active validation session found"}), 404
 
         if session_doc.get("completed"):
             result = session_doc.get("result", {})
-            return jsonify({"message": "Already completed", "advice": result.get("advice"), "affirmation": result.get("affirmation")}), 200
+            return jsonify({
+                "message": "Already completed",
+                "advice": result.get("advice"),
+                "affirmation": result.get("affirmation")
+            }), 200
 
         answers = session_doc.get("answers", [])
         if len(answers) < 1:
-            return jsonify({"error": "At least one validation answer required before completing."}), 400
+            return jsonify({"error": "At least one validation answer required"}), 400
 
         journal_text = session_doc.get("journal_text", "")
         emotion_hidden = session_doc.get("emotion_hidden", "Unknown")
         answers_context = "\n".join([f"Q{a['step']}_answer: {a['answer']}" for a in answers])
 
-        final_prompt = f""" You are a compassionate journaling coach. Do NOT reveal the detected emotion label to the user.  Context: Journal: \"\"\"{journal_text}\"\"\" Validation answers: {answers_context}  Task: 1) Generate a short, practical piece of advice (2-3 sentences) that directly addresses the user's experience and the validation answers. 2) Generate a single-line supportive affirmation (1 line).  Respond ONLY in JSON with the exact keys: {{   "advice": "<2-3 sentence practical advice>",   "affirmation": "<one-line supportive affirmation>" }} Keep language warm, non-judgmental, and actionable. Do not include therapy diagnoses. Do not mention the hidden emotion label. """
+        # -----------------------------
+        # GENERATE FINAL ADVICE
+        # -----------------------------
+        final_prompt = f"""
+You are a compassionate journaling coach. Do NOT reveal the detected emotion to the user.
 
-        ai_raw = model.generate_content(final_prompt).text.strip()
-        ai_raw = ai_raw.replace("```json", "").replace("```", "").strip()
+Context:
+Journal: \"\"\"{journal_text}\"\"\"
+Validation answers:
+{answers_context}
+
+Task:
+1) Generate a short, practical piece of advice (2–3 sentences) directly based on the journal + answers.
+2) Generate a single-line supportive affirmation.
+
+Rules:
+- Respond ONLY in valid JSON.
+- Use EXACT keys: "advice", "affirmation".
+- NO commentary, NO markdown, NO explanation, NO extra text.
+- Do NOT talk about being an AI model.
+
+JSON FORMAT:
+{{
+  "advice": "<2–3 sentences>",
+  "affirmation": "<1 short supportive sentence>"
+}}
+"""
+
+        ai_raw = None
 
         try:
+            # Groq API call instead of Gemini
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": final_prompt}]
+            )
+
+            ai_raw = response.choices[0].message.content.strip()
+            ai_raw = ai_raw.replace("```json", "").replace("```", "").strip()
+
             final_data = json.loads(ai_raw)
+
         except Exception as e:
-            app.logger.error("FINAL JSON ERROR: %s\nRAW FINAL: %s", e, ai_raw)
-            return jsonify({"error": "Invalid AI JSON for final advice"}), 500
+            app.logger.error("FINAL JSON ERROR: %s\nRAW FINAL: %s", e, ai_raw if ai_raw else "NO AI OUTPUT")
+            return jsonify({"error": "Invalid AI JSON"}), 500
 
-        advice_text = (final_data.get("advice") or "").strip()
-        affirmation_text = (final_data.get("affirmation") or "").strip()
 
-        # Save advice + affirmation into the user's journal entry
+        # Extract final advice + affirmation
+        advice_text = final_data.get("advice", "").strip()
+        affirmation_text = final_data.get("affirmation", "").strip()
+
+
+        # -----------------------------
+        # UPDATE JOURNAL ENTRY
+        # -----------------------------
         user_doc = journals_col.find_one({"username": username})
-        if not user_doc:
-            return jsonify({"error": "User journal not found"}), 404
+        entry_obj = next(e for e in user_doc["entries"] if e["date"] == date)
 
-        entry_obj = next((e for e in user_doc.get("entries", []) if e.get("date") == date), None)
-        if not entry_obj:
-            return jsonify({"error": "Journal entry for given date not found"}), 404
-
-        updated_entry = dict(entry_obj)
+        updated_entry = entry_obj.copy()
         updated_entry["ai_advice"] = advice_text
         updated_entry["ai_affirmation"] = affirmation_text
         updated_entry["last_updated"] = datetime.utcnow()
 
-        journals_col.update_one({"username": username, "entries.date": date}, {"$set": {"entries.$": updated_entry, "last_updated": datetime.utcnow()}})
+        journals_col.update_one(
+            {"username": username, "entries.date": date},
+            {"$set": {"entries.$": updated_entry}}
+        )
 
-        sessions_col.update_one({"username": username, "date": date}, {"$set": {"completed": True, "completed_at": datetime.utcnow(), "result": {"advice": advice_text, "affirmation": affirmation_text}, "updated_at": datetime.utcnow()}})
+        # -----------------------------
+        # MARK VALIDATION AS COMPLETE
+        # -----------------------------
+        sessions_col.update_one(
+            {"username": username, "date": date},
+            {"$set": {
+                "completed": True,
+                "completed_at": datetime.utcnow(),
+                "result": {"advice": advice_text, "affirmation": affirmation_text}
+            }}
+        )
 
-        return jsonify({"message": "Validation complete", "advice": advice_text, "affirmation": affirmation_text}), 200
+        # -----------------------------
+        # LOG EMOTION HISTORY
+        # -----------------------------
+        history_col.insert_one({
+            "username": username,
+            "date": date,
+            "emotion": emotion_hidden,
+            "timestamp": datetime.utcnow()
+        })
+
+        # -----------------------------
+        # ASSIGN WELLBEING TASKS
+        # -----------------------------
+        from task_library import pick_tasks
+        selected_tasks = pick_tasks(emotion_hidden, count=3)
+
+        expires_at = datetime.utcnow() + timedelta(minutes=30)
+
+        tasks_payload = {
+            "username": username,
+            "date": date,
+            "emotion": emotion_hidden,
+            "tasks": [
+                {
+                    "id": t["id"],
+                    "title": t["title"],
+                    "duration": t["duration"],
+                    "type": t["type"],
+                    "expires_at": expires_at,
+                    "status": "pending"
+                }
+                for t in selected_tasks
+            ],
+            "created_at": datetime.utcnow()
+        }
+
+        # -----------------------------
+        # UPSERT WELLBEING TASKS
+        # -----------------------------
+        tasks_col.update_one(
+            {"username": username, "date": date},   # match today's tasks for this user
+            {
+                "$set": {
+                    "emotion": emotion_hidden,
+                    "tasks": tasks_payload["tasks"],
+                    "created_at": datetime.utcnow()
+                }
+            },
+            upsert=True
+        )
+
+
+        # -----------------------------
+        # RETURN FINAL RESPONSE
+        # -----------------------------
+        return jsonify({
+            "message": "Validation complete",
+            "advice": advice_text,
+            "affirmation": affirmation_text,
+            "tasks_assigned": tasks_payload["tasks"]
+        }), 200
 
     except Exception as e:
         app.logger.error("SERVER ERROR (/complete): %s\n%s", e, traceback.format_exc())
         return jsonify({"error": "Internal server error"}), 500
+
+
+# TASKS
+@app.route('/get-tasks', methods=['GET'])
+def get_tasks():
+    username = request.args.get("username")
+    tasks = list(mongo.db.wellbeing_tasks.find({"username": username}))
+    
+    # Flatten: list of task objects
+    task_list = []
+    for doc in tasks:
+        for t in doc.get("tasks", []):
+            if t["status"] == "pending":
+                task_list.append(t)
+
+    return jsonify({"tasks": task_list})
+
+@app.route('/complete-task', methods=['POST'])
+def complete_task():
+    
+    try:
+        print("📥 RAW DATA:", request.data)
+        print("📥 HEADERS:", request.headers)
+
+        data = request.get_json(force=True, silent=False)
+    except Exception as e:
+        print("❌ JSON parse error:", e)
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    username = data.get("username")
+    task_id = data.get("task_id")
+
+    print("🔥 DEBUG username:", username)
+    print("🔥 DEBUG task_id:", task_id)
+
+    if not username or not task_id:
+        return jsonify({"error": "Missing username or task_id"}), 400
+
+    result = mongo.db.wellbeing_tasks.update_one(
+        {"username": username, "tasks.id": task_id},
+        {"$set": {"tasks.$.status": "completed"}}
+        
+    )
+
+    if result.modified_count == 0:
+        return jsonify({"error": "Task not found for this user"}), 404
+
+    return jsonify({"message": "Task completed"}), 200
+
+
+
+@app.route("/get-task")
+def get_task():
+    try:
+        task_id = request.args.get("task_id")
+
+        if not task_id:
+            return jsonify({"error": "Missing task_id"}), 400
+
+        # Just find the task anywhere in the array
+        doc = mongo.db.wellbeing_tasks.find_one({"tasks.id": task_id})
+
+        if not doc:
+            return jsonify({"error": "Task not found"}), 404
+
+        # Extract specific task
+        task = next((t for t in doc["tasks"] if t["id"] == task_id), None)
+
+        return jsonify({"task": task}), 200
+
+    except Exception as e:
+        print("ERROR /get-task:", e)
+        return jsonify({"error": "Internal server error"}), 500
+
 
 
 
