@@ -151,7 +151,7 @@ function ValidationModal({ isVisible, closeModal, journalEntry, initialQuestionD
 
     try {
       setBusy(true);
-      const resp = await fetch("http://192.168.29.215:5010/answer-question", {
+      const resp = await fetch("https://studentsphere-mobile-app-backend.onrender.com/answer-question", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username: u, date, answer }),
@@ -186,7 +186,7 @@ function ValidationModal({ isVisible, closeModal, journalEntry, initialQuestionD
   const fetchFinalAdvice = async () => {
     try {
       setBusy(true);
-      const resp = await fetch("http://192.168.29.215:5010/complete", {
+      const resp = await fetch("https://studentsphere-mobile-app-backend.onrender.com/complete", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, date }),
@@ -385,7 +385,7 @@ export default function JournalEntry() {
 
       const date = new Date().toISOString().split('T')[0];
       try {
-        const resp = await fetch(`http://192.168.29.215:5010/get-journal?username=${encodeURIComponent(cleanUsername)}&date=${date}`);
+        const resp = await fetch(`https://studentsphere-mobile-app-backend.onrender.com/get-journal?username=${encodeURIComponent(cleanUsername)}&date=${date}`);
         const data = await resp.json();
         if (resp.ok && data) setEntry(data.text || "");
       } catch (error) {
@@ -434,7 +434,7 @@ export default function JournalEntry() {
     const date = new Date().toISOString().split("T")[0];
     try {
       setLoading(true);
-      const resp = await fetch("http://192.168.29.215:5010/save-journal", {
+      const resp = await fetch("https://studentsphere-mobile-app-backend.onrender.com/save-journal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

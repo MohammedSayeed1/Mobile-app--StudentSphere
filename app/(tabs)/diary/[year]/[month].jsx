@@ -65,7 +65,7 @@ const ViewMonth = () => {
 
       try {
         const res = await fetch(
-          `http://192.168.29.215:5010/get-journal?username=${username}&datePrefix=${datePrefix}`
+          `https://studentsphere-mobile-app-backend.onrender.com/get-journal?username=${username}&datePrefix=${datePrefix}`
         );
         const json = await res.json();
         setJournals(json.entries || []);

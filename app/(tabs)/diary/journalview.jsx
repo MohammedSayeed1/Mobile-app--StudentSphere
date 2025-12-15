@@ -75,7 +75,7 @@ const JournalView = () => {
 
     const loadData = async () => {
       try {
-        const res = await fetch(`http://192.168.29.215:5010/summaries/${username}`);
+        const res = await fetch(`https://studentsphere-mobile-app-backend.onrender.com/summaries/${username}`);
         const json = await res.json();
         setSummaries(json?.summaries || []);
       } catch (err) {

@@ -64,7 +64,7 @@ export default function RewardsPage() {
         }
 
         const res = await fetch(
-          `http://192.168.29.215:5010/get-points?username=${username}`
+          `https://studentsphere-mobile-app-backend.onrender.com/get-points?username=${username}`
         );
 
         const data = await res.json();
@@ -85,7 +85,7 @@ export default function RewardsPage() {
     const fetchRewards = async () => {
       try {
         const res = await axios.get(
-          "http://192.168.29.215:5010/get-level-rewards"
+          "https://studentsphere-mobile-app-backend.onrender.com/get-level-rewards"
         );
 
         setRewards(res.data.rewards || []);

@@ -82,7 +82,7 @@ export default function TasksPage() {
       if (!silent) setLoading(true);
 
       const resp = await fetch(
-        `http://192.168.29.215:5010/get-tasks?username=${encodeURIComponent(u)}`
+        `https://studentsphere-mobile-app-backend.onrender.com/get-tasks?username=${encodeURIComponent(u)}`
       );
       const data = await resp.json();
 

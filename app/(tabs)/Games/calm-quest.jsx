@@ -41,7 +41,7 @@ export default function CalmQuest() {
   // --------------------------------------------------
   // BACKEND CONFIG
   // --------------------------------------------------
-  const BASE_URL = "http://192.168.29.215:5010/";
+  const BASE_URL = "https://studentsphere-mobile-app-backend.onrender.com/";
 
   const [username, setUsername] = useState("");
 

@@ -93,7 +93,7 @@ export default function TaskRunner() {
       console.log("📌 Fetching task:", taskId);
 
       const resp = await fetch(
-        `http://192.168.29.215:5010/get-task?task_id=${taskId}&username=${username}`
+        `https://studentsphere-mobile-app-backend.onrender.com/get-task?task_id=${taskId}&username=${username}`
       );
 
       const data = await resp.json();
@@ -121,7 +121,7 @@ export default function TaskRunner() {
 
       console.log("📤 Sending:", payload);
 
-      const resp = await fetch("http://192.168.29.215:5010/complete-task", {
+      const resp = await fetch("https://studentsphere-mobile-app-backend.onrender.com/complete-task", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

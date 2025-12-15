@@ -47,7 +47,7 @@ const MoodSnapshot = () => {
         return;
       }
 
-      const res = await axios.post('http://192.168.29.215:5010/affirmations', { username });
+      const res = await axios.post('https://studentsphere-mobile-app-backend.onrender.com/affirmations', { username });
       // Access the entries array safely
       const entries = res?.data?.entries ?? res?.data?.journals ?? [];
       if (!Array.isArray(entries) || entries.length === 0) {

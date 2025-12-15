@@ -48,7 +48,7 @@ export default function MonthCardStack({ coverImage }) {
       }
 
       const resp = await fetch(
-        `http://192.168.29.215:5010/get-monthly-summary?username=${encodeURIComponent(
+        `https://studentsphere-mobile-app-backend.onrender.com/get-monthly-summary?username=${encodeURIComponent(
           username
         )}`
       );

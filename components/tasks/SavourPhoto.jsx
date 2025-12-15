@@ -111,7 +111,7 @@ export default function SavorPhoto({ task, onComplete }) {
 
       console.log("📤 Uploading memory (size chars):", payload.image_base64?.length ?? 0);
 
-      const resp = await fetch("http://192.168.29.215:5010/save-memory", {
+      const resp = await fetch("https://studentsphere-mobile-app-backend.onrender.com/save-memory", {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify(payload),

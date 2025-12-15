@@ -78,7 +78,7 @@ const StreakCalendar = () => {
       }
 
       const res = await axios.post(
-        "http://192.168.29.215:5010/affirmations",
+        "https://studentsphere-mobile-app-backend.onrender.com/affirmations",
         { username }
       );
 

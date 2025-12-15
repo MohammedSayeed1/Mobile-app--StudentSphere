@@ -24,7 +24,7 @@ export default function MemoryBox({ task, onComplete }) {
         JSON.parse((await AsyncStorage.getItem("user")) || "{}")?.username;
 
       const resp = await fetch(
-        `http://192.168.29.215:5010/get-memories?username=${encodeURIComponent(
+        `https://studentsphere-mobile-app-backend.onrender.com/get-memories?username=${encodeURIComponent(
           username
         )}`
       );

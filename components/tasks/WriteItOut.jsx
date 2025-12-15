@@ -28,7 +28,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
  */
 
 const AUTOSAVE_INTERVAL_MS = 30_000; // autosave every 30s
-const BACKEND_SAVE_URL = "http://192.168.29.215:5010/save-journal"; // change if different
+const BACKEND_SAVE_URL = "https://studentsphere-mobile-app-backend.onrender.com/save-journal"; // change if different
 
 export default function WriteItOut({ task = {}, onComplete }) {
   const durationMinutes = Number(task.duration) || 5;
