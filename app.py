@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from collections import defaultdict
 from cryptography.fernet import Fernet
 import traceback
+from dateutil import parser
 
 # NEW: Import Groq
 from groq import Groq
@@ -53,6 +54,8 @@ journals_collection = mongo.db.journals
 memories_collection = mongo.db.memories
 summaries_collection = mongo.db.summaries
 calm_quest_collection = mongo.db.calm_quest
+level_rewards_collection = mongo.db.level_rewards
+
 
 
 def encrypt_text(plain_text):
@@ -206,7 +209,7 @@ def save_journal():
         {json.dumps(micro_checkin, indent=2)}
 
         Tasks:
-        1. Identify ONE dominant emotion from:
+        1. Identify ONE dominant emotion from from this list:
         [Happy, Sad, Anxious, Stressed, Angry, Lonely, Grateful, Hopeful, Guilty, Conflicted]
 
         2. Generate ONE validation question:
@@ -461,29 +464,29 @@ def complete_validation_and_create_advice():
         # GENERATE FINAL ADVICE
         # -----------------------------
         final_prompt = f"""
-You are a compassionate journaling coach. Do NOT reveal the detected emotion to the user.
+            You are a compassionate journaling coach. Do NOT reveal the detected emotion to the user.
 
-Context:
-Journal: \"\"\"{journal_text}\"\"\"
-Validation answers:
-{answers_context}
+            Context:
+            Journal: \"\"\"{journal_text}\"\"\"
+            Validation answers:
+            {answers_context}
 
-Task:
-1) Generate a short, practical piece of advice (2–3 sentences) directly based on the journal + answers.
-2) Generate a single-line supportive affirmation.
+            Task:
+            1) Generate a short, practical piece of advice (2–3 sentences) directly based on the journal + answers.
+            2) Generate a single-line supportive affirmation.
 
-Rules:
-- Respond ONLY in valid JSON.
-- Use EXACT keys: "advice", "affirmation".
-- NO commentary, NO markdown, NO explanation, NO extra text.
-- Do NOT talk about being an AI model.
+            Rules:
+            - Respond ONLY in valid JSON.
+            - Use EXACT keys: "advice", "affirmation".
+            - NO commentary, NO markdown, NO explanation, NO extra text.
+            - Do NOT talk about being an AI model.
 
-JSON FORMAT:
-{{
-  "advice": "<2–3 sentences>",
-  "affirmation": "<1 short supportive sentence>"
-}}
-"""
+            JSON FORMAT:
+            {{
+            "advice": "<2–3 sentences>",
+            "affirmation": "<1 short supportive sentence>"
+            }}
+            """
 
         ai_raw = None
 
@@ -605,77 +608,126 @@ JSON FORMAT:
 
 
 # TASKS
+# -----------------------------
+# GET TASKS (return only MOST RECENT user document)
+# -----------------------------
 @app.route('/get-tasks', methods=['GET'])
 def get_tasks():
     username = request.args.get("username")
-    tasks = list(mongo.db.wellbeing_tasks.find({"username": username}))
-    
-    # Flatten: list of task objects
-    task_list = []
-    for doc in tasks:
-        for t in doc.get("tasks", []):
-            if t["status"] == "pending":
-                task_list.append(t)
 
-    return jsonify({"tasks": task_list})
+    # Always fetch latest document
+    record = mongo.db.wellbeing_tasks.find_one(
+        {"username": username},
+        sort=[("created_at", -1)],
+        projection={"_id": 0, "tasks": 1}
+    )
 
+    if not record:
+        return jsonify({"tasks": []})
+
+    now = datetime.utcnow()
+    active_tasks = []
+
+    for t in record.get("tasks", []):
+        exp = t.get("expires_at")
+
+        # CASE 1: Already datetime object
+        if isinstance(exp, datetime):
+            exp_dt = exp
+
+        # CASE 2: String date
+        elif isinstance(exp, str):
+            try:
+                exp_dt = parser.parse(exp)
+            except Exception:
+                continue
+
+        # Invalid format
+        else:
+            continue
+
+        # Add only active tasks
+        if t.get("status") == "pending" and exp_dt > now:
+            active_tasks.append(t)
+
+    return jsonify({"tasks": active_tasks})
+# -----------------------------
+# COMPLETE TASK (update only latest document)
+# -----------------------------
 @app.route('/complete-task', methods=['POST'])
 def complete_task():
-    
     try:
-        print("📥 RAW DATA:", request.data)
-        print("📥 HEADERS:", request.headers)
-
-        data = request.get_json(force=True, silent=False)
-    except Exception as e:
-        print("❌ JSON parse error:", e)
+        data = request.get_json(force=True)
+    except Exception:
         return jsonify({"error": "Invalid JSON"}), 400
 
     username = data.get("username")
     task_id = data.get("task_id")
 
-    print("🔥 DEBUG username:", username)
-    print("🔥 DEBUG task_id:", task_id)
-
     if not username or not task_id:
         return jsonify({"error": "Missing username or task_id"}), 400
 
-    result = mongo.db.wellbeing_tasks.update_one(
-        {"username": username, "tasks.id": task_id},
-        {"$set": {"tasks.$.status": "completed"}}
-        
+    # 🔥 UPDATE ONLY THE MOST RECENT TASK DOCUMENT
+    record = mongo.db.wellbeing_tasks.find_one_and_update(
+        {
+            "username": username,
+            "tasks.id": task_id
+        },
+        {
+            "$set": {
+                "tasks.$.status": "completed",
+                "tasks.$.completed_at": datetime.utcnow()
+            }
+        },
+        sort=[("created_at", -1)],   # ⭐ KEY FIX
+        return_document=True
     )
 
-    if result.modified_count == 0:
-        return jsonify({"error": "Task not found for this user"}), 404
+    if not record:
+        return jsonify({"error": "Task not found in latest task set"}), 404
 
-    return jsonify({"message": "Task completed"}), 200
+    # POINTS UPSERT
+    updated_record = mongo.db.wellbeing_points.find_one_and_update(
+        {"username": username},
+        {
+            "$inc": {"points": 5},
+            "$set": {"last_modified": datetime.utcnow()}
+        },
+        upsert=True,
+        return_document=True
+    )
+
+    return jsonify({
+        "message": "Task completed",
+        "added_points": 5,
+        "total_points": updated_record["points"]
+    }), 200
 
 
 
-@app.route("/get-task")
+
+# -----------------------------
+# GET SINGLE TASK (from most recent doc)
+# -----------------------------
+@app.route("/get-task", methods=["GET"])
 def get_task():
-    try:
-        task_id = request.args.get("task_id")
+    task_id = request.args.get("task_id")
+    username = request.args.get("username")
 
-        if not task_id:
-            return jsonify({"error": "Missing task_id"}), 400
+    record = mongo.db.wellbeing_tasks.find_one(
+        {"username": username},
+        sort=[("created_at", -1)],     # <-- FIX
+        projection={"tasks": 1, "_id": 0}
+    )
 
-        # Just find the task anywhere in the array
-        doc = mongo.db.wellbeing_tasks.find_one({"tasks.id": task_id})
+    if not record:
+        return jsonify({"error": "Not found"}), 404
 
-        if not doc:
-            return jsonify({"error": "Task not found"}), 404
+    for t in record["tasks"]:
+        if t["id"] == task_id:
+            return jsonify({"task": t})
 
-        # Extract specific task
-        task = next((t for t in doc["tasks"] if t["id"] == task_id), None)
-
-        return jsonify({"task": task}), 200
-
-    except Exception as e:
-        print("ERROR /get-task:", e)
-        return jsonify({"error": "Internal server error"}), 500
-
+    return jsonify({"error": "Task not found"}), 404
 
 
 
@@ -965,6 +1017,165 @@ def get_summaries_query():
     if not username:
         return jsonify({"error": "username query param required"}), 400
     return get_summaries_by_username(username)
+
+
+# ---------------------------
+# Save memory (encrypt + store)
+# ---------------------------
+
+import base64
+memory_col = mongo.db.memory_box
+@app.route("/save-memory", methods=["POST"])
+def save_memory():
+    try:
+        data = request.get_json(silent=True) or {}
+
+        # Accept legacy keys
+        image_base64 = data.get("image_base64") or data.get("photo") or ""
+        caption = data.get("caption", "") or ""
+        username = (data.get("username") or "").strip()
+        mime = data.get("mime", "image/jpeg")
+
+        if not username:
+            return jsonify({"success": False, "error": "Missing username"}), 400
+
+        if not image_base64:
+            return jsonify({"success": False, "error": "Missing image data"}), 400
+
+        # Validate base64
+        try:
+            img_bytes = base64.b64decode(image_base64)
+        except Exception:
+            return jsonify({"success": False, "error": "Invalid base64 image"}), 400
+
+        # --------------------------
+        # Encrypt image + caption
+        # --------------------------
+        enc_image = fernet.encrypt(img_bytes)
+        enc_caption = fernet.encrypt(caption.encode("utf-8"))
+
+        # Store encrypted fields as base64
+        memory_entry = {
+            "enc_image_b64": base64.b64encode(enc_image).decode("utf-8"),
+            "enc_caption_b64": base64.b64encode(enc_caption).decode("utf-8"),
+            "mime": mime,
+            "saved_at": datetime.utcnow()
+        }
+
+        # --------------------------
+        # UPSERT: store all memories inside one document
+        # --------------------------
+        result = memory_col.update_one(
+            {"username": username},
+            {"$push": {"memories": memory_entry}},
+            upsert=True
+        )
+
+        return jsonify({
+            "success": True,
+            "message": "Memory saved",
+            "updated_existing": result.matched_count > 0
+        }), 200
+
+    except Exception as e:
+        app.logger.error("SAVE MEMORY ERROR:\n%s", traceback.format_exc())
+        return jsonify({"success": False, "error": "Internal server error"}), 500
+
+
+# ---------------------------
+# Get memories (decrypt)
+# ---------------------------
+@app.route("/get-memories", methods=["GET"])
+def get_memories():
+    try:
+        username = (request.args.get("username") or "").strip()
+        if not username:
+            return jsonify({"error": "Missing username"}), 400
+
+        doc = memory_col.find_one({"username": username})
+        if not doc:
+            return jsonify({"memories": []}), 200
+
+        memory_list = doc.get("memories", [])
+        results = []
+
+        for m in memory_list:
+            try:
+                # Extract fields inside each memory object
+                enc_image_b64 = m.get("enc_image_b64")
+                enc_caption_b64 = m.get("enc_caption_b64")
+                mime = m.get("mime", "image/jpeg")
+                saved_at = m.get("saved_at")
+
+                # Decrypt image
+                if enc_image_b64:
+                    enc_image = base64.b64decode(enc_image_b64)
+                    img_bytes = fernet.decrypt(enc_image)
+                    image_base64 = base64.b64encode(img_bytes).decode("utf-8")
+                else:
+                    image_base64 = None
+
+                # Decrypt caption
+                if enc_caption_b64:
+                    enc_caption = base64.b64decode(enc_caption_b64)
+                    caption = fernet.decrypt(enc_caption).decode("utf-8")
+                else:
+                    caption = ""
+
+                results.append({
+                    "image_base64": image_base64,
+                    "mime": mime,
+                    "caption": caption,
+                    "saved_at": saved_at.isoformat() if saved_at else None
+                })
+
+            except Exception as e:
+                app.logger.error("DECRYPT ERROR: %s", e)
+
+        return jsonify({"memories": results}), 200
+
+    except Exception as e:
+        app.logger.error("GET MEMORIES ERROR:\n%s", traceback.format_exc())
+        return jsonify({"error": "Internal server error"}), 500
+
+
+# -----------------------------
+# GET USER POINTS
+# -----------------------------
+@app.route("/get-points", methods=["GET"])
+def get_points():
+    username = request.args.get("username")
+
+    if not username:
+        return jsonify({"error": "username required"}), 400
+
+    record = mongo.db.wellbeing_points.find_one(
+        {"username": username},
+        {"_id": 0, "points": 1}
+    )
+
+    if not record:
+        return jsonify({"points": 0}), 200
+
+    return jsonify({"points": record.get("points", 0)}), 200
+
+@app.route("/get-level-rewards", methods=["GET"])
+def get_level_rewards():
+    try:
+        rewards = list(
+            level_rewards_collection.find(
+                {"active": True},
+                {"_id": 0}
+            ).sort("minLevel", 1)
+        )
+
+        return jsonify({
+            "rewards": rewards
+        }), 200
+
+    except Exception as e:
+        print("🔥 Error fetching rewards:", e)
+        return jsonify({"rewards": []}), 500
 
 
 

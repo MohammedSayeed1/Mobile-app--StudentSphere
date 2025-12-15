@@ -44,7 +44,7 @@ const sentimentEmojiMap = {
   stressed: "😩",
   lonely: "😔",
   guilty: "😓",
-  conflicted: "🤯",
+  conflicted: "😕",
 };
 
 const positiveSentiments = new Set(["happy", "grateful", "hopeful"]);

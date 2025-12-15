@@ -155,6 +155,15 @@ export default function TabsLayout() {
             ),
           }}
         />
+         <Tabs.Screen
+          name="tasks"
+          options={{
+            title: 'Tasks',
+            tabBarIcon: ({ color, focused }) => (
+              <TabIcon icon={icons.tasks} color={color} name="Tasks" focused={focused} />
+            ),
+          }}
+        />
       </Tabs>
     </>
   );

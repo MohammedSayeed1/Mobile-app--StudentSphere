@@ -302,10 +302,13 @@ function ValidationModal({ isVisible, closeModal, journalEntry, initialQuestionD
 
               <TouchableOpacity 
                 style={[styles.modalButton, { backgroundColor: "#3c3d37" }]}
-                onPress={() => { 
-                  closeModal(); 
-                  router.push("/tasks"); // NEW ROUTE
+                onPress={() => {
+                  closeModal();
+                  setTimeout(() => {
+                    router.push("/tasks?refresh=1");
+                  }, 350); // let MongoDB finish writing
                 }}
+                
               >
                 <Text style={styles.modalButtonText}>View Tasks</Text>
               </TouchableOpacity>

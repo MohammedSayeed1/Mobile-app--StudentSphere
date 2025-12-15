@@ -12,10 +12,10 @@ import eyeHide from "../assets/icons/eye-hide.png";
 import eye from "../assets/icons/eye.png";
 import play from "../assets/icons/play.png";
 import goal from "../assets/icons/goal.png";
-import diary from "../assets/icons/diary.png";
+import diary from "../assets/icons/book.png";
 import memory from "../assets/icons/memory.png";
-import game from "../assets/icons/game.png";
-
+import game from "../assets/icons/games.png";
+import tasks from "../assets/icons/tasks.png";
 export default {
   play,
   bookmark,
@@ -34,4 +34,5 @@ export default {
   diary,
   memory,
   game,
+  tasks
 };

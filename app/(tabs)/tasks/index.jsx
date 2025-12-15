@@ -7,10 +7,14 @@ import {
   ActivityIndicator,
   RefreshControl,
   Animated,
-  FlatList
+  FlatList,
+  Modal,
+  TouchableOpacity
 } from "react-native";
+
+import { useFocusEffect } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import TaskCard from "../../../components/tasks/TaskCard";
 
 export default function TasksPage() {
@@ -18,10 +22,33 @@ export default function TasksPage() {
   const [username, setUsername] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [rewardModal, setRewardModal] = useState(null);
 
   const router = useRouter();
+  const params = useLocalSearchParams();
 
-  // Store animated values for each task
+  // ------------------------------
+  // Handle reward modal
+  // ------------------------------
+  useEffect(() => {
+    if (!params.reward) return;
+
+    try {
+      const r = JSON.parse(params.reward);
+      setRewardModal(r);
+    } catch {}
+
+  }, [params.reward]);
+
+  // ------------------------------
+  // FORCE REFRESH on return from task screen
+  // ------------------------------
+  useEffect(() => {
+    if (params.refresh === "1" && username) {
+      loadTasks(username);
+    }
+  }, [params.refresh, username]);
+
   const animatedValues = {};
 
   // ------------------------------
@@ -30,7 +57,6 @@ export default function TasksPage() {
   const readUsername = async () => {
     try {
       let username = await AsyncStorage.getItem("username");
-
       if (!username) {
         const raw = await AsyncStorage.getItem("user");
         if (raw) {
@@ -42,9 +68,8 @@ export default function TasksPage() {
           }
         }
       }
-      return username && username !== "null" ? String(username).trim() : null;
-    } catch (e) {
-      console.log("Error reading username:", e);
+      return username?.trim() || null;
+    } catch {
       return null;
     }
   };
@@ -61,19 +86,13 @@ export default function TasksPage() {
       );
       const data = await resp.json();
 
-      if (!resp.ok) {
-        console.log("Task load error:", data);
-        setTasks([]);
-        return;
-      }
-
-      // Filter out expired tasks
       const now = new Date();
-      const active = (data.tasks || []).filter(
-        (t) => new Date(t.expires_at) > now
+
+      const cleaned = (data.tasks || []).filter(
+        t => t.status !== "completed" && new Date(t.expires_at) > now
       );
 
-      setTasks(active);
+      setTasks(cleaned);
     } catch (err) {
       console.log("Load tasks error:", err);
     } finally {
@@ -82,9 +101,7 @@ export default function TasksPage() {
     }
   }, []);
 
-  // ------------------------------
   // Initial load
-  // ------------------------------
   useEffect(() => {
     (async () => {
       const u = await readUsername();
@@ -93,27 +110,12 @@ export default function TasksPage() {
     })();
   }, []);
 
-  // ------------------------------
-  // Auto-refresh every 30 seconds
-  // ------------------------------
-  useEffect(() => {
-    if (!username) return;
-
-    const interval = setInterval(() => loadTasks(username, true), 60000);
-    return () => clearInterval(interval);
-  }, [username]);
-
-  // ------------------------------
-  // Pull-to-refresh
-  // ------------------------------
+  // Pull to refresh
   const onRefresh = async () => {
     setRefreshing(true);
     loadTasks(username);
   };
 
-  // ------------------------------
-  // Navigate to task details
-  // ------------------------------
   const openTask = (task) => {
     router.push({
       pathname: "/tasks/[taskId]",
@@ -121,12 +123,8 @@ export default function TasksPage() {
     });
   };
 
-  // ------------------------------
-  // Animate task removal
-  // ------------------------------
   const animateRemoval = (taskId, callback) => {
     if (!animatedValues[taskId]) return callback();
-
     Animated.timing(animatedValues[taskId], {
       toValue: 0,
       duration: 300,
@@ -135,7 +133,7 @@ export default function TasksPage() {
   };
 
   // ------------------------------
-  // If loading username
+  // UI
   // ------------------------------
   if (!username) {
     return (
@@ -146,9 +144,6 @@ export default function TasksPage() {
     );
   }
 
-  // ------------------------------
-  // Main View
-  // ------------------------------
   return (
     <View style={styles.container}>
       <Text style={styles.title}>🌱 Your Wellbeing Tasks</Text>
@@ -164,11 +159,8 @@ export default function TasksPage() {
         <FlatList
           data={tasks}
           keyExtractor={(item) => item.id}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          renderItem={({ item }) => {
-            // Create animated value
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          renderItem={({ item, index }) => {
             if (!animatedValues[item.id]) {
               animatedValues[item.id] = new Animated.Value(1);
             }
@@ -177,15 +169,12 @@ export default function TasksPage() {
               <Animated.View
                 style={{
                   opacity: animatedValues[item.id],
-                  transform: [
-                    {
-                      scale: animatedValues[item.id],
-                    },
-                  ],
+                  transform: [{ scale: animatedValues[item.id] }],
                 }}
               >
                 <TaskCard
                   task={item}
+                  index={index}
                   onOpen={() => openTask(item)}
                   onRemove={() =>
                     animateRemoval(item.id, () => loadTasks(username))
@@ -196,6 +185,25 @@ export default function TasksPage() {
           }}
         />
       )}
+
+      {/* Reward Modal */}
+      {rewardModal && (
+        <Modal transparent animationType="fade">
+          <View style={styles.rewardOverlay}>
+            <View style={styles.rewardCard}>
+              <TouchableOpacity
+                style={styles.closeBtn}
+                onPress={() => setRewardModal(null)}
+              >
+                <Text style={{ fontSize: 20 }}>✖</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.rewardTitle}>+{rewardModal.added_points} Points</Text>
+              <Text style={styles.rewardText}>Total Points: {rewardModal.total_points}</Text>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -203,6 +211,37 @@ export default function TasksPage() {
 const styles = StyleSheet.create({
   container: { padding: 20, flex: 1, backgroundColor: "#fafaf5" },
   title: { fontSize: 24, fontFamily: "Gilroy-Bold", marginBottom: 20 },
-  emptyText: { fontSize: 16, color: "#777", marginTop: 20, textAlign: "center" },
+  emptyText: { fontSize: 16, color: "#777", textAlign: "center" },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
+
+  rewardOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.35)",
+  },
+  rewardCard: {
+    width: "80%",
+    backgroundColor: "#fff",
+    padding: 22,
+    borderRadius: 16,
+    alignItems: "center",
+    elevation: 5,
+    position: "relative",
+  },
+  rewardTitle: {
+    fontSize: 24,
+    fontFamily: "Gilroy-Bold",
+    marginBottom: 6,
+  },
+  rewardText: {
+    fontSize: 18,
+    fontFamily: "Gilroy-Regular",
+  },
+  closeBtn: {
+    position: "absolute",
+    top: 10,
+    right: 10,
+    paddingHorizontal: 6,
+  },
 });

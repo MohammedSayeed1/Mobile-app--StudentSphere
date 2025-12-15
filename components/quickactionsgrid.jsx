@@ -7,7 +7,7 @@ import { useFonts } from 'expo-font';
 const actions = [
   { title: 'Journal',       emoji: '✍️', route: '/diary/journalentry', color: '#FDE2E4' },
   { title: 'Entries',       emoji: '📖', route: '/diary/journalview',  color: '#E2F0CB' },
-  { title: 'Affirmations',  emoji: '🙏', route: '/diary/affirmations',   color: '#CDEDF6' },
+  { title: 'Rewards',       emoji: '⭐', route: '/rewards',   color: '#CDEDF6' },
   { title: 'Settings',      emoji: '⚙️', route: '/settings',            color: '#FFF1C1' },
 ];
 

@@ -10,6 +10,7 @@ EMOTION_TASKS = {
     # HAPPY
     # ---------------------------------------------------------
     "Happy": [
+        #DONE
         {
             "id": "happy_celebrate_win",
             "title": "Celebrate a Win",
@@ -18,30 +19,42 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "low"
         },
-        # {
-        #     "id": "happy_share_joy",
-        #     "title": "Share the Joy",
-        #     "description": "Send a short message to one friend about something good that happened.",
-        #     "duration": 3,
-        #     "type": "Social",
-        #     "intensity": "low"
-        # },
-        # {
-        #     "id": "happy_savor_photo",
-        #     "title": "Savoring Photo",
-        #     "description": "Take a photo of something that made you smile and write one sentence about it.",
-        #     "duration": 5,
-        #     "type": "Creative",
-        #     "intensity": "low"
-        # },
-        # {
-        #     "id": "happy_gratitude_microlist",
-        #     "title": "Gratitude Microlist",
-        #     "description": "List 3 people you're thankful for and why.",
-        #     "duration": 4,
-        #     "type": "Cognitive",
-        #     "intensity": "low"
-        # },
+        #DONE
+        {
+            "id": "happy_share_joy",
+            "title": "Share the Joy",
+            "description": "Send a short message to one friend about something good that happened.",
+            "duration": 3,
+            "type": "Social",
+            "intensity": "low"
+        },
+        #DONE
+        {
+            "id": "happy_savor_photo",
+            "title": "Savoring Photo",
+            "description": "Take a photo of something that made you smile and write one sentence about it.",
+            "duration": 5,
+            "type": "Creative",
+            "intensity": "low"
+        },
+        # DONE
+        {
+            "id": "happy_gratitude_microlist",
+            "title": "Gratitude Microlist",
+            "description": "List 3 people you're thankful for and why.",
+            "duration": 4,
+            "type": "Cognitive",
+            "intensity": "low"
+        },
+        # DONE
+        {
+            "id": "happy_spread_kindness",
+            "title": "Spread Kindness",
+            "description": "Perform one small helpful action toward someone.",
+            "duration": 10,
+            "type": "Social",
+            "intensity": "medium"
+        },
         # {
         #     "id": "happy_amplify",
         #     "title": "Amplify the Moment",
@@ -58,22 +71,16 @@ EMOTION_TASKS = {
         #     "type": "Cognitive",
         #     "intensity": "low"
         # },
-        {
-            "id": "happy_spread_kindness",
-            "title": "Spread Kindness",
-            "description": "Perform one small helpful action toward someone.",
-            "duration": 10,
-            "type": "Social",
-            "intensity": "medium"
-        },
-        {
-            "id": "happy_playlist",
-            "title": "Create a Mood Playlist",
-            "description": "Add 3 upbeat songs to a playlist called 'Mood Boost'.",
-            "duration": 7,
-            "type": "Creative",
-            "intensity": "medium"
-        },
+
+        
+        # {
+        #     "id": "happy_playlist",
+        #     "title": "Create a Mood Playlist",
+        #     "description": "Add 3 upbeat songs to a playlist called 'Mood Boost'.",
+        #     "duration": 7,
+        #     "type": "Creative",
+        #     "intensity": "medium"
+        # },
         # {
         #     "id": "happy_creative_burst",
         #     "title": "Mini Creative Burst",
@@ -105,22 +112,22 @@ EMOTION_TASKS = {
             "type": "Calm",
             "intensity": "low"
         },
-        {
-            "id": "sad_permission",
-            "title": "Permission to Feel",
-            "description": "Write: 'It's okay that I feel ___' to validate your emotions.",
-            "duration": 5,
-            "type": "Cognitive",
-            "intensity": "medium"
-        },
-        {
-            "id": "sad_activation",
-            "title": "Behavioral Activation",
-            "description": "Complete one tiny achievable task (tea, window open).",
-            "duration": 7,
-            "type": "Behavioral",
-            "intensity": "medium"
-        },
+        # {
+        #     "id": "sad_permission",
+        #     "title": "Permission to Feel",
+        #     "description": "Write: 'It's okay that I feel ___' to validate your emotions.",
+        #     "duration": 5,
+        #     "type": "Cognitive",
+        #     "intensity": "medium"
+        # },
+        # {
+        #     "id": "sad_activation",
+        #     "title": "Behavioral Activation",
+        #     "description": "Complete one tiny achievable task (tea, window open).",
+        #     "duration": 7,
+        #     "type": "Behavioral",
+        #     "intensity": "medium"
+        # },
         {
             "id": "sad_connect",
             "title": "Reach Out",
@@ -129,14 +136,14 @@ EMOTION_TASKS = {
             "type": "Social",
             "intensity": "low"
         },
-        {
-            "id": "sad_safe_distraction",
-            "title": "Soothing Nature Audio",
-            "description": "Listen to calming sounds for 5 minutes.",
-            "duration": 5,
-            "type": "Calm",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "sad_safe_distraction",
+        #     "title": "Soothing Nature Audio",
+        #     "description": "Listen to calming sounds for 5 minutes.",
+        #     "duration": 5,
+        #     "type": "Calm",
+        #     "intensity": "low"
+        # },
         {
             "id": "sad_micro_gratitude",
             "title": "One Small Gratitude",
@@ -153,14 +160,14 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "medium"
         },
-        {
-            "id": "sad_movement",
-            "title": "Gentle Movement",
-            "description": "Do a 3-minute stretch or slow walk.",
-            "duration": 4,
-            "type": "Behavioral",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "sad_movement",
+        #     "title": "Gentle Movement",
+        #     "description": "Do a 3-minute stretch or slow walk.",
+        #     "duration": 4,
+        #     "type": "Behavioral",
+        #     "intensity": "low"
+        # },
         {
             "id": "sad_memory_box",
             "title": "Memory Box",
@@ -169,14 +176,14 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "low"
         },
-        {
-            "id": "sad_help_plan",
-            "title": "Plan for Support",
-            "description": "List 2 people or resources you'd contact if you feel worse.",
-            "duration": 3,
-            "type": "ProblemSolve",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "sad_help_plan",
+        #     "title": "Plan for Support",
+        #     "description": "List 2 people or resources you'd contact if you feel worse.",
+        #     "duration": 3,
+        #     "type": "ProblemSolve",
+        #     "intensity": "low"
+        # },
     ],
 
 
@@ -208,14 +215,14 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "medium"
         },
-        {
-            "id": "anx_muscle_relaxation",
-            "title": "Muscle Relaxation",
-            "description": "Progressively tense and relax your muscles.",
-            "duration": 6,
-            "type": "Calm",
-            "intensity": "medium"
-        },
+        # {
+        #     "id": "anx_muscle_relaxation",
+        #     "title": "Muscle Relaxation",
+        #     "description": "Progressively tense and relax your muscles.",
+        #     "duration": 6,
+        #     "type": "Calm",
+        #     "intensity": "medium"
+        # },
         {
             "id": "anx_reality_check",
             "title": "Reality Check",
@@ -224,14 +231,14 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "medium"
         },
-        {
-            "id": "anx_visualize_safe",
-            "title": "Safe Place Visualization",
-            "description": "Imagine a calming safe place while breathing slowly.",
-            "duration": 4,
-            "type": "Calm",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "anx_visualize_safe",
+        #     "title": "Safe Place Visualization",
+        #     "description": "Imagine a calming safe place while breathing slowly.",
+        #     "duration": 4,
+        #     "type": "Calm",
+        #     "intensity": "low"
+        # },
         {
             "id": "anx_pomodoro",
             "title": "15-Minute Focus Reset",
@@ -240,30 +247,30 @@ EMOTION_TASKS = {
             "type": "Behavioral",
             "intensity": "medium"
         },
-        {
-            "id": "anx_voice_note",
-            "title": "Talk-It-Out Voice Note",
-            "description": "Record a 2-minute explanation of your worry.",
-            "duration": 4,
-            "type": "Cognitive",
-            "intensity": "medium"
-        },
-        {
-            "id": "anx_movement",
-            "title": "Movement Burst",
-            "description": "Do a quick brisk walk or jumping jacks.",
-            "duration": 3,
-            "type": "Behavioral",
-            "intensity": "low"
-        },
-        {
-            "id": "anx_safety_steps",
-            "title": "Safety Checklist",
-            "description": "List 3 coping steps you’ll use if anxiety spikes.",
-            "duration": 3,
-            "type": "ProblemSolve",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "anx_voice_note",
+        #     "title": "Talk-It-Out Voice Note",
+        #     "description": "Record a 2-minute explanation of your worry.",
+        #     "duration": 4,
+        #     "type": "Cognitive",
+        #     "intensity": "medium"
+        # },
+        # {
+        #     "id": "anx_movement",
+        #     "title": "Movement Burst",
+        #     "description": "Do a quick brisk walk or jumping jacks.",
+        #     "duration": 3,
+        #     "type": "Behavioral",
+        #     "intensity": "low"
+        # },
+        # {
+        #     "id": "anx_safety_steps",
+        #     "title": "Safety Checklist",
+        #     "description": "List 3 coping steps you’ll use if anxiety spikes.",
+        #     "duration": 3,
+        #     "type": "ProblemSolve",
+        #     "intensity": "low"
+        # },
     ],
 
 
@@ -279,14 +286,14 @@ EMOTION_TASKS = {
             "type": "Calm",
             "intensity": "low"
         },
-        {
-            "id": "stress_priority",
-            "title": "Micro-Priority List",
-            "description": "Pick your top 2 tasks & ignore everything else.",
-            "duration": 7,
-            "type": "Cognitive",
-            "intensity": "medium"
-        },
+        # {
+        #     "id": "stress_priority",
+        #     "title": "Micro-Priority List",
+        #     "description": "Pick your top 2 tasks & ignore everything else.",
+        #     "duration": 7,
+        #     "type": "Cognitive",
+        #     "intensity": "medium"
+        # },
         {
             "id": "stress_relaxation",
             "title": "Progressive Relaxation",
@@ -295,14 +302,14 @@ EMOTION_TASKS = {
             "type": "Calm",
             "intensity": "medium"
         },
-        {
-            "id": "stress_pomodoro",
-            "title": "Pomodoro Reset",
-            "description": "25 minutes focused work.",
-            "duration": 25,
-            "type": "Behavioral",
-            "intensity": "medium"
-        },
+        # {
+        #     "id": "stress_pomodoro",
+        #     "title": "Pomodoro Reset",
+        #     "description": "25 minutes focused work.",
+        #     "duration": 25,
+        #     "type": "Behavioral",
+        #     "intensity": "medium"
+        # },
         {
             "id": "stress_visualization",
             "title": "Task Success Visualization",
@@ -311,30 +318,30 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "low"
         },
-        {
-            "id": "stress_stretch",
-            "title": "Neck and Shoulder Stretch",
-            "description": "Release tension stored in upper body.",
-            "duration": 4,
-            "type": "Behavioral",
-            "intensity": "low"
-        },
-        {
-            "id": "stress_decision_rule",
-            "title": "60–40 Micro-Decision",
-            "description": "Pick an option quickly to break indecision.",
-            "duration": 3,
-            "type": "Cognitive",
-            "intensity": "low"
-        },
-        {
-            "id": "stress_audio",
-            "title": "Calming Audio + Water Sip",
-            "description": "Listen to calming sound while hydrating.",
-            "duration": 4,
-            "type": "Calm",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "stress_stretch",
+        #     "title": "Neck and Shoulder Stretch",
+        #     "description": "Release tension stored in upper body.",
+        #     "duration": 4,
+        #     "type": "Behavioral",
+        #     "intensity": "low"
+        # },
+        # {
+        #     "id": "stress_decision_rule",
+        #     "title": "60–40 Micro-Decision",
+        #     "description": "Pick an option quickly to break indecision.",
+        #     "duration": 3,
+        #     "type": "Cognitive",
+        #     "intensity": "low"
+        # },
+        # {
+        #     "id": "stress_audio",
+        #     "title": "Calming Audio + Water Sip",
+        #     "description": "Listen to calming sound while hydrating.",
+        #     "duration": 4,
+        #     "type": "Calm",
+        #     "intensity": "low"
+        # },
         {
             "id": "stress_ask_help",
             "title": "Ask for Help",
@@ -366,14 +373,14 @@ EMOTION_TASKS = {
             "type": "Calm",
             "intensity": "low"
         },
-        {
-            "id": "angry_timeout",
-            "title": "Take a Time-Out",
-            "description": "Step away and ground yourself.",
-            "duration": 6,
-            "type": "Calm",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "angry_timeout",
+        #     "title": "Take a Time-Out",
+        #     "description": "Step away and ground yourself.",
+        #     "duration": 6,
+        #     "type": "Calm",
+        #     "intensity": "low"
+        # },
         {
             "id": "angry_write",
             "title": "Write It Out",
@@ -382,14 +389,14 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "medium"
         },
-        {
-            "id": "angry_physical",
-            "title": "Physical Release",
-            "description": "Do quick vigorous movement to discharge energy.",
-            "duration": 4,
-            "type": "Behavioral",
-            "intensity": "medium"
-        },
+        # {
+        #     "id": "angry_physical",
+        #     "title": "Physical Release",
+        #     "description": "Do quick vigorous movement to discharge energy.",
+        #     "duration": 4,
+        #     "type": "Behavioral",
+        #     "intensity": "medium"
+        # },
         {
             "id": "angry_reframe",
             "title": "Perspective Shift",
@@ -398,22 +405,22 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "medium"
         },
-        {
-            "id": "angry_action_list",
-            "title": "Regret vs Action List",
-            "description": "Separate impulses from effective responses.",
-            "duration": 5,
-            "type": "Cognitive",
-            "intensity": "medium"
-        },
-        {
-            "id": "angry_cooling_visual",
-            "title": "Cooling Visualization",
-            "description": "Imagine steam leaving your body.",
-            "duration": 3,
-            "type": "Calm",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "angry_action_list",
+        #     "title": "Regret vs Action List",
+        #     "description": "Separate impulses from effective responses.",
+        #     "duration": 5,
+        #     "type": "Cognitive",
+        #     "intensity": "medium"
+        # },
+        # {
+        #     "id": "angry_cooling_visual",
+        #     "title": "Cooling Visualization",
+        #     "description": "Imagine steam leaving your body.",
+        #     "duration": 3,
+        #     "type": "Calm",
+        #     "intensity": "low"
+        # },
         {
             "id": "angry_safe_expression",
             "title": "Safe Voice Expression",
@@ -422,14 +429,14 @@ EMOTION_TASKS = {
             "type": "Behavioral",
             "intensity": "low"
         },
-        {
-            "id": "angry_apology_rehearsal",
-            "title": "Apology Rehearsal",
-            "description": "Draft a short accountability message (optional send).",
-            "duration": 4,
-            "type": "Social",
-            "intensity": "medium"
-        },
+        # {
+        #     "id": "angry_apology_rehearsal",
+        #     "title": "Apology Rehearsal",
+        #     "description": "Draft a short accountability message (optional send).",
+        #     "duration": 4,
+        #     "type": "Social",
+        #     "intensity": "medium"
+        # },
         {
             "id": "angry_problem_solve",
             "title": "Problem-Solve Step",
@@ -445,6 +452,7 @@ EMOTION_TASKS = {
     # LONELY
     # ---------------------------------------------------------
     "Lonely": [
+        #  DONE
         {
             "id": "lonely_reachout",
             "title": "Reach Out",
@@ -453,14 +461,16 @@ EMOTION_TASKS = {
             "type": "Social",
             "intensity": "low"
         },
-        {
-            "id": "lonely_event",
-            "title": "Find a Campus Event",
-            "description": "Browse one event or club and save it.",
-            "duration": 6,
-            "type": "Behavioral",
-            "intensity": "medium"
-        },
+        # non relevant
+        # {
+        #     "id": "lonely_event",
+        #     "title": "Find a Campus Event",
+        #     "description": "Browse one event or club and save it.",
+        #     "duration": 6,
+        #     "type": "Behavioral",
+        #     "intensity": "medium"
+        # },
+        # DONE
         {
             "id": "lonely_gratitude_people",
             "title": "Gratitude for Helpers",
@@ -469,6 +479,7 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "low"
         },
+        #DONE
         {
             "id": "lonely_micro_call",
             "title": "Schedule a 10-min Call",
@@ -477,30 +488,16 @@ EMOTION_TASKS = {
             "type": "Social",
             "intensity": "medium"
         },
-        {
-            "id": "lonely_volunteer",
-            "title": "Volunteer Micro-Task",
-            "description": "Sign up for a short volunteer opportunity.",
-            "duration": 15,
-            "type": "Behavioral",
-            "intensity": "medium"
-        },
-        {
-            "id": "lonely_letter",
-            "title": "Write a Letter to Someone You Miss",
-            "description": "Express thoughts even if you don't send it.",
-            "duration": 6,
-            "type": "Cognitive",
-            "intensity": "medium"
-        },
-        {
-            "id": "lonely_livestream",
-            "title": "Join a Live Event Online",
-            "description": "Watch a livestream or panel for shared experience.",
-            "duration": 12,
-            "type": "Distraction",
-            "intensity": "low"
-        },
+        # non relevent
+        # {
+        #     "id": "lonely_volunteer",
+        #     "title": "Volunteer Micro-Task",
+        #     "description": "Sign up for a short volunteer opportunity.",
+        #     "duration": 15,
+        #     "type": "Behavioral",
+        #     "intensity": "medium"
+        # },
+        # DONE
         {
             "id": "lonely_barrier_reflect",
             "title": "What Stops Me?",
@@ -509,6 +506,7 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "medium"
         },
+        # DONE
         {
             "id": "lonely_cozy_ritual",
             "title": "Create a Cozy Space",
@@ -517,14 +515,14 @@ EMOTION_TASKS = {
             "type": "Calm",
             "intensity": "low"
         },
-        {
-            "id": "lonely_buddy_checkin",
-            "title": "Buddy Check-In",
-            "description": "Ask someone how their week was.",
-            "duration": 4,
-            "type": "Social",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "lonely_buddy_checkin",
+        #     "title": "Buddy Check-In",
+        #     "description": "Ask someone how their week was.",
+        #     "duration": 4,
+        #     "type": "Social",
+        #     "intensity": "low"
+        # },
     ],
 
 
@@ -532,6 +530,7 @@ EMOTION_TASKS = {
     # GRATEFUL
     # ---------------------------------------------------------
     "Grateful": [
+        #DONE
         {
             "id": "grateful_letter",
             "title": "Write a Gratitude Letter",
@@ -540,14 +539,15 @@ EMOTION_TASKS = {
             "type": "Social",
             "intensity": "medium"
         },
-        {
-            "id": "grateful_walk",
-            "title": "Savoring Walk",
-            "description": "Observe 5 pleasant things around you.",
-            "duration": 7,
-            "type": "Calm",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "grateful_walk",
+        #     "title": "Savoring Walk",
+        #     "description": "Observe 5 pleasant things around you.",
+        #     "duration": 7,
+        #     "type": "Calm",
+        #     "intensity": "low"
+        # },
+        # DONE
         {
             "id": "grateful_photo",
             "title": "Gratitude Album",
@@ -556,22 +556,23 @@ EMOTION_TASKS = {
             "type": "Creative",
             "intensity": "low"
         },
-        {
-            "id": "grateful_share",
-            "title": "Share Gratitude",
-            "description": "Post or message something you're grateful for.",
-            "duration": 3,
-            "type": "Social",
-            "intensity": "low"
-        },
-        {
-            "id": "grateful_affirm",
-            "title": "Create a Gratitude Affirmation",
-            "description": "Write a one-line affirmation.",
-            "duration": 2,
-            "type": "Cognitive",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "grateful_share",
+        #     "title": "Share Gratitude",
+        #     "description": "Post or message something you're grateful for.",
+        #     "duration": 3,
+        #     "type": "Social",
+        #     "intensity": "low"
+        # },
+        # {
+        #     "id": "grateful_affirm",
+        #     "title": "Create a Gratitude Affirmation",
+        #     "description": "Write a one-line affirmation.",
+        #     "duration": 2,
+        #     "type": "Cognitive",
+        #     "intensity": "low"
+        # },
+        # DONE
         {
             "id": "grateful_pay_forward",
             "title": "Pay It Forward",
@@ -580,6 +581,7 @@ EMOTION_TASKS = {
             "type": "Social",
             "intensity": "medium"
         },
+        # DONE
         {
             "id": "grateful_reflect",
             "title": "Gratitude Reflection",
@@ -596,22 +598,22 @@ EMOTION_TASKS = {
             "type": "Calm",
             "intensity": "low"
         },
-        {
-            "id": "grateful_memory",
-            "title": "Recall a Supportive Moment",
-            "description": "Write 5 sentences about a moment that mattered.",
-            "duration": 6,
-            "type": "Cognitive",
-            "intensity": "medium"
-        },
-        {
-            "id": "grateful_ritual",
-            "title": "Create a Gratitude Ritual",
-            "description": "Set a daily 1-minute gratitude reminder.",
-            "duration": 2,
-            "type": "Behavioral",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "grateful_memory",
+        #     "title": "Recall a Supportive Moment",
+        #     "description": "Write 5 sentences about a moment that mattered.",
+        #     "duration": 6,
+        #     "type": "Cognitive",
+        #     "intensity": "medium"
+        # },
+        # {
+        #     "id": "grateful_ritual",
+        #     "title": "Create a Gratitude Ritual",
+        #     "description": "Set a daily 1-minute gratitude reminder.",
+        #     "duration": 2,
+        #     "type": "Behavioral",
+        #     "intensity": "low"
+        # },
     ],
 
 
@@ -635,22 +637,22 @@ EMOTION_TASKS = {
             "type": "Behavioral",
             "intensity": "medium"
         },
-        {
-            "id": "hope_vision_board",
-            "title": "Mini Vision Board",
-            "description": "Save one image that represents your next goal.",
-            "duration": 5,
-            "type": "Creative",
-            "intensity": "low"
-        },
-        {
-            "id": "hope_share_excited",
-            "title": "Share Something You're Excited About",
-            "description": "Tell a friend about something you look forward to.",
-            "duration": 3,
-            "type": "Social",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "hope_vision_board",
+        #     "title": "Mini Vision Board",
+        #     "description": "Save one image that represents your next goal.",
+        #     "duration": 5,
+        #     "type": "Creative",
+        #     "intensity": "low"
+        # },
+        # {
+        #     "id": "hope_share_excited",
+        #     "title": "Share Something You're Excited About",
+        #     "description": "Tell a friend about something you look forward to.",
+        #     "duration": 3,
+        #     "type": "Social",
+        #     "intensity": "low"
+        # },
         {
             "id": "hope_affirm",
             "title": "Hopeful Affirmation",
@@ -659,22 +661,22 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "low"
         },
-        {
-            "id": "hope_scripting",
-            "title": "Success-Day Scripting",
-            "description": "Describe the next successful day in 5 sentences.",
-            "duration": 6,
-            "type": "Cognitive",
-            "intensity": "medium"
-        },
-        {
-            "id": "hope_research",
-            "title": "10-min Micro Research",
-            "description": "Learn one practical tip that supports your goal.",
-            "duration": 10,
-            "type": "Behavioral",
-            "intensity": "medium"
-        },
+        # {
+        #     "id": "hope_scripting",
+        #     "title": "Success-Day Scripting",
+        #     "description": "Describe the next successful day in 5 sentences.",
+        #     "duration": 6,
+        #     "type": "Cognitive",
+        #     "intensity": "medium"
+        # },
+        # {
+        #     "id": "hope_research",
+        #     "title": "10-min Micro Research",
+        #     "description": "Learn one practical tip that supports your goal.",
+        #     "duration": 10,
+        #     "type": "Behavioral",
+        #     "intensity": "medium"
+        # },
         {
             "id": "hope_progress_log",
             "title": "Progress Log",
@@ -691,14 +693,14 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "low"
         },
-        {
-            "id": "hope_commit_ritual",
-            "title": "Commitment Ritual",
-            "description": "Set a calendar reminder for your next step.",
-            "duration": 2,
-            "type": "Behavioral",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "hope_commit_ritual",
+        #     "title": "Commitment Ritual",
+        #     "description": "Set a calendar reminder for your next step.",
+        #     "duration": 2,
+        #     "type": "Behavioral",
+        #     "intensity": "low"
+        # },
     ],
 
 
@@ -746,46 +748,46 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "low"
         },
-        {
-            "id": "guilt_soothe_body",
-            "title": "Hand-on-Heart Breathing",
-            "description": "Physical soothing exercise to soften guilt.",
-            "duration": 3,
-            "type": "Calm",
-            "intensity": "low"
-        },
-        {
-            "id": "guilt_restitution",
-            "title": "Behavioral Restitution",
-            "description": "Do one helpful act today to restore balance.",
-            "duration": 10,
-            "type": "Behavioral",
-            "intensity": "medium"
-        },
-        {
-            "id": "guilt_cognitive_check",
-            "title": "Is My Guilt Proportionate?",
-            "description": "List evidence for & against your guilt.",
-            "duration": 8,
-            "type": "Cognitive",
-            "intensity": "medium"
-        },
-        {
-            "id": "guilt_talk_peer",
-            "title": "Talk to a Trusted Peer",
-            "description": "Share openly for perspective & support.",
-            "duration": 15,
-            "type": "Social",
-            "intensity": "medium"
-        },
-        {
-            "id": "guilt_prevention_plan",
-            "title": "Plan to Prevent Recurrence",
-            "description": "Design one concrete change.",
-            "duration": 6,
-            "type": "ProblemSolve",
-            "intensity": "medium"
-        },
+        # {
+        #     "id": "guilt_soothe_body",
+        #     "title": "Hand-on-Heart Breathing",
+        #     "description": "Physical soothing exercise to soften guilt.",
+        #     "duration": 3,
+        #     "type": "Calm",
+        #     "intensity": "low"
+        # },
+        # {
+        #     "id": "guilt_restitution",
+        #     "title": "Behavioral Restitution",
+        #     "description": "Do one helpful act today to restore balance.",
+        #     "duration": 10,
+        #     "type": "Behavioral",
+        #     "intensity": "medium"
+        # },
+        # {
+        #     "id": "guilt_cognitive_check",
+        #     "title": "Is My Guilt Proportionate?",
+        #     "description": "List evidence for & against your guilt.",
+        #     "duration": 8,
+        #     "type": "Cognitive",
+        #     "intensity": "medium"
+        # },
+        # {
+        #     "id": "guilt_talk_peer",
+        #     "title": "Talk to a Trusted Peer",
+        #     "description": "Share openly for perspective & support.",
+        #     "duration": 15,
+        #     "type": "Social",
+        #     "intensity": "medium"
+        # },
+        # {
+        #     "id": "guilt_prevention_plan",
+        #     "title": "Plan to Prevent Recurrence",
+        #     "description": "Design one concrete change.",
+        #     "duration": 6,
+        #     "type": "ProblemSolve",
+        #     "intensity": "medium"
+        # },
     ],
 
 
@@ -809,22 +811,22 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "medium"
         },
-        {
-            "id": "conflict_time_test",
-            "title": "Time-Limited Experiment",
-            "description": "Try option A for 24 hours (planning step).",
-            "duration": 2,
-            "type": "Behavioral",
-            "intensity": "low"
-        },
-        {
-            "id": "conflict_voice_note",
-            "title": "Talk-It-Out Voice Note",
-            "description": "Record a 2-minute pros/cons discussion.",
-            "duration": 4,
-            "type": "Cognitive",
-            "intensity": "medium"
-        },
+        # {
+        #     "id": "conflict_time_test",
+        #     "title": "Time-Limited Experiment",
+        #     "description": "Try option A for 24 hours (planning step).",
+        #     "duration": 2,
+        #     "type": "Behavioral",
+        #     "intensity": "low"
+        # },
+        # {
+        #     "id": "conflict_voice_note",
+        #     "title": "Talk-It-Out Voice Note",
+        #     "description": "Record a 2-minute pros/cons discussion.",
+        #     "duration": 4,
+        #     "type": "Cognitive",
+        #     "intensity": "medium"
+        # },
         {
             "id": "conflict_friend_advice",
             "title": "Advice to a Friend",
@@ -841,14 +843,14 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "medium"
         },
-        {
-            "id": "conflict_small_step",
-            "title": "Reversible Step",
-            "description": "Choose one small low-commitment action.",
-            "duration": 3,
-            "type": "Behavioral",
-            "intensity": "low"
-        },
+        # {
+        #     "id": "conflict_small_step",
+        #     "title": "Reversible Step",
+        #     "description": "Choose one small low-commitment action.",
+        #     "duration": 3,
+        #     "type": "Behavioral",
+        #     "intensity": "low"
+        # },
         {
             "id": "conflict_list_worries",
             "title": "List Worries vs Benefits",
@@ -857,22 +859,22 @@ EMOTION_TASKS = {
             "type": "Cognitive",
             "intensity": "medium"
         },
-        {
-            "id": "conflict_sleep",
-            "title": "Sleep On It",
-            "description": "Set a reminder to revisit after rest.",
-            "duration": 1,
-            "type": "Behavioral",
-            "intensity": "low"
-        },
-        {
-            "id": "conflict_third_view",
-            "title": "Ask a Trusted Person",
-            "description": "Get a perspective from someone neutral.",
-            "duration": 6,
-            "type": "Social",
-            "intensity": "medium"
-        },
+        # {
+        #     "id": "conflict_sleep",
+        #     "title": "Sleep On It",
+        #     "description": "Set a reminder to revisit after rest.",
+        #     "duration": 1,
+        #     "type": "Behavioral",
+        #     "intensity": "low"
+        # },
+        # {
+        #     "id": "conflict_third_view",
+        #     "title": "Ask a Trusted Person",
+        #     "description": "Get a perspective from someone neutral.",
+        #     "duration": 6,
+        #     "type": "Social",
+        #     "intensity": "medium"
+        # },
     ],
 }
 
